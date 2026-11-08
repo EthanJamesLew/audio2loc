@@ -32,10 +32,13 @@ struct Vec3 {
 };
 
 Vec3 geodetic_to_ecef(double lat_deg, double lon_deg, double h);
-void ecef_to_geodetic(const Vec3& p, double& lat_deg, double& lon_deg, double& h);
+void ecef_to_geodetic(const Vec3& p, double& lat_deg, double& lon_deg,
+                      double& h);
 // ENU direction vector at (lat, lon) expressed in ECEF.
-Vec3 enu_to_ecef_dir(double lat_deg, double lon_deg, double e, double n, double u);
-void ecef_dir_to_enu(double lat_deg, double lon_deg, const Vec3& d, double& e, double& n, double& u);
+Vec3 enu_to_ecef_dir(double lat_deg, double lon_deg, double e, double n,
+                     double u);
+void ecef_dir_to_enu(double lat_deg, double lon_deg, const Vec3& d, double& e,
+                     double& n, double& u);
 
 // Metres per degree of latitude / longitude at a latitude (ellipsoidal).
 inline double m_per_deg_lat(double lat_deg) {
@@ -45,25 +48,30 @@ inline double m_per_deg_lat(double lat_deg) {
 }
 inline double m_per_deg_lon(double lat_deg) {
   double s = std::sin(lat_deg * kDeg);
-  return kDeg * kWgsA * std::cos(lat_deg * kDeg) / std::sqrt(1.0 - kWgsE2 * s * s);
+  return kDeg * kWgsA * std::cos(lat_deg * kDeg) /
+         std::sqrt(1.0 - kWgsE2 * s * s);
 }
 
 double haversine_m(double lat1, double lon1, double lat2, double lon2);
 
-// A quasi-uniform lat/lon grid with ~step_m spacing. Row i sits at latitude i*dlat;
-// within a row the longitude spacing is widened by 1/cos(lat) so cells stay ~square.
+// A quasi-uniform lat/lon grid with ~step_m spacing. Row i sits at latitude
+// i*dlat; within a row the longitude spacing is widened by 1/cos(lat) so cells
+// stay ~square.
 class GeoGrid {
  public:
   explicit GeoGrid(double step_m);
   double step() const { return step_; }
-  static uint64_t pack(int32_t i, int32_t j) { return ((uint64_t)(uint32_t)i << 32) | (uint32_t)j; }
+  static uint64_t pack(int32_t i, int32_t j) {
+    return ((uint64_t)(uint32_t)i << 32) | (uint32_t)j;
+  }
   static int32_t ki(uint64_t k) { return (int32_t)(uint32_t)(k >> 32); }
   static int32_t kj(uint64_t k) { return (int32_t)(uint32_t)(k & 0xffffffffu); }
   double row_lat(int32_t i) const { return i * dlat_; }
   double row_dlon(int32_t i) const;
   void center(uint64_t key, double& lat, double& lon) const;
   uint64_t nearest(double lat, double lon) const;
-  // Calls fn(key, lat, lon) for every node within radius_m (horizontal) of (lat, lon).
+  // Calls fn(key, lat, lon) for every node within radius_m (horizontal) of
+  // (lat, lon).
   template <class F>
   void for_each_within(double lat, double lon, double radius_m, F&& fn) const {
     double mlat = m_per_deg_lat(lat);
@@ -79,7 +87,8 @@ class GeoGrid {
       double dl = row_dlon(i);
       int32_t j0 = (int32_t)std::ceil((lon - dxm / mlon) / dl);
       int32_t j1 = (int32_t)std::floor((lon + dxm / mlon) / dl);
-      for (int32_t j = j0; j <= j1; ++j) fn(pack(i, j), la, j * dl);
+      for (int32_t j = j0; j <= j1; ++j)
+        fn(pack(i, j), la, j * dl);
     }
   }
 

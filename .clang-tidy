@@ -1,0 +1,45 @@
+# Enabled check families (kept tight so CI finishes in reasonable time and
+# so we don't bury real findings under style churn):
+#   bugprone-*    : real correctness bugs (UB, use-after-move, etc.)
+#   performance-* : easy wins (missing std::move, unnecessary copies)
+#   readability-* : lightweight readability (no renaming lints)
+#   modernize-*   : C++17/20 upgrades (but not the aggressive rewriters)
+#
+# Disabled individual checks are either too noisy on this codebase or
+# fight the style we've chosen (e.g. using-decls in switch cases).
+Checks: >
+  -*,
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  readability-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-branch-clone,
+  -modernize-use-trailing-return-type,
+  -modernize-avoid-c-arrays,
+  -modernize-use-nodiscard,
+  -modernize-use-designated-initializers,
+  -modernize-use-ranges,
+  -modernize-use-std-numbers,
+  -modernize-use-scoped-lock,
+  -modernize-return-braced-init-list,
+  -modernize-use-integer-sign-comparison,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-function-cognitive-complexity,
+  -readability-uppercase-literal-suffix,
+  -readability-braces-around-statements,
+  -readability-implicit-bool-conversion,
+  -readability-named-parameter,
+  -readability-qualified-auto,
+  -readability-convert-member-functions-to-static,
+  -readability-else-after-return,
+  -readability-math-missing-parentheses,
+  -readability-avoid-nested-conditional-operator,
+  -readability-inconsistent-ifelse-braces,
+  -performance-avoid-endl
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '^(src|tests)/.*\.(h|hpp)$'
+FormatStyle: file

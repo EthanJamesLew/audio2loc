@@ -22,14 +22,18 @@ std::string utc_date(double t) {
 
 std::vector<std::string> dates_between(double t0, double t1) {
   std::vector<std::string> d;
-  for (double day = std::floor(t0 / 86400); day <= std::floor(t1 / 86400) && d.size() < 400; ++day)
+  for (double day = std::floor(t0 / 86400);
+       day <= std::floor(t1 / 86400) && d.size() < 400; ++day)
     d.push_back(utc_date(day * 86400));
   return d;
 }
 
-std::string db_day_path(const std::string& db, const std::string& date) { return db + "/adsb_" + date + ".plb"; }
+std::string db_day_path(const std::string& db, const std::string& date) {
+  return db + "/adsb_" + date + ".plb";
+}
 
-bool db_day_bbox(const std::string& plb, double& w, double& s, double& e, double& n) {
+bool db_day_bbox(const std::string& plb, double& w, double& s, double& e,
+                 double& n) {
   FILE* m = std::fopen((plb + ".meta").c_str(), "r");
   if (!m) return false;
   bool ok = std::fscanf(m, "bbox %lf %lf %lf %lf", &w, &s, &e, &n) == 4;
@@ -39,7 +43,8 @@ bool db_day_bbox(const std::string& plb, double& w, double& s, double& e, double
 
 static std::string shq(const std::string& s) {
   std::string o = "'";
-  for (char c : s) o += c == '\'' ? std::string("'\\''") : std::string(1, c);
+  for (char c : s)
+    o += c == '\'' ? std::string("'\\''") : std::string(1, c);
   return o + "'";
 }
 
@@ -49,25 +54,33 @@ static bool run_capture(const std::string& cmd, std::string& out) {
   char buf[1 << 14];
   size_t n;
   out.clear();
-  while ((n = std::fread(buf, 1, sizeof buf, p)) > 0) out.append(buf, n);
+  while ((n = std::fread(buf, 1, sizeof buf, p)) > 0)
+    out.append(buf, n);
   return pclose(p) == 0;
 }
 
 static std::string auth_header() {
   const char* t = std::getenv("GITHUB_TOKEN");
-  return t && *t ? std::string(" -H ") + shq(std::string("Authorization: Bearer ") + t) : "";
+  return t && *t ? std::string(" -H ") +
+                       shq(std::string("Authorization: Bearer ") + t)
+                 : "";
 }
 
 // Returns the ordered tar part URLs for a day, trying prod then staging builds.
-static std::vector<std::string> release_parts(const std::string& curl, const std::string& date) {
+static std::vector<std::string> release_parts(const std::string& curl,
+                                              const std::string& date) {
   std::string tagdate = date;
   for (auto& c : tagdate)
     if (c == '-') c = '.';
   for (const char* flavour : {"prod-0", "prod-1", "staging-0"}) {
     std::string tag = "v" + tagdate + "-planes-readsb-" + flavour;
-    std::string url = "https://api.github.com/repos/adsblol/globe_history_" + date.substr(0, 4) + "/releases/tags/" + tag;
+    std::string url = "https://api.github.com/repos/adsblol/globe_history_" +
+                      date.substr(0, 4) + "/releases/tags/" + tag;
     std::string body;
-    if (!run_capture(curl + " -fsSL" + auth_header() + " " + shq(url) + " 2>/dev/null", body)) continue;
+    if (!run_capture(
+            curl + " -fsSL" + auth_header() + " " + shq(url) + " 2>/dev/null",
+            body))
+      continue;
     JVal j;
     if (!parse_json(body, j)) continue;
     const JVal* assets = j.get("assets");
@@ -75,13 +88,16 @@ static std::vector<std::string> release_parts(const std::string& curl, const std
     std::vector<std::pair<std::string, std::string>> parts;
     for (auto& a : assets->a) {
       const JVal *n = a.get("name"), *u = a.get("browser_download_url");
-      if (n && u && n->s.find(".tar") != std::string::npos) parts.push_back({n->s, u->s});
+      if (n && u && n->s.find(".tar") != std::string::npos)
+        parts.push_back({n->s, u->s});
     }
     if (parts.empty()) continue;  // release created but upload not finished yet
     std::sort(parts.begin(), parts.end());
     std::vector<std::string> urls;
-    for (auto& p : parts) urls.push_back(p.second);
-    log("update %s: release %s (%zu part%s)", date.c_str(), tag.c_str(), urls.size(), urls.size() > 1 ? "s" : "");
+    for (auto& p : parts)
+      urls.push_back(p.second);
+    log("update %s: release %s (%zu part%s)", date.c_str(), tag.c_str(),
+        urls.size(), urls.size() > 1 ? "s" : "");
     return urls;
   }
   return {};
@@ -119,7 +135,8 @@ static bool gunzip(const std::string& in, std::string& out) {
 static uint64_t tar_num(const char* p, int n) {
   if ((unsigned char)p[0] & 0x80) {  // GNU base-256
     uint64_t v = 0;
-    for (int i = 1; i < n; ++i) v = (v << 8) | (unsigned char)p[i];
+    for (int i = 1; i < n; ++i)
+      v = (v << 8) | (unsigned char)p[i];
     return v;
   }
   uint64_t v = 0;
@@ -128,9 +145,10 @@ static uint64_t tar_num(const char* p, int n) {
   return v;
 }
 
-// Streams `cmd` output as a tar archive; trace JSON members are parsed by a worker pool and written
-// to the cache as they arrive.
-static bool ingest_tar_stream(const std::string& cmd, const LoadOptions& filt, CacheWriter& w, size_t& nfiles) {
+// Streams `cmd` output as a tar archive; trace JSON members are parsed by a
+// worker pool and written to the cache as they arrive.
+static bool ingest_tar_stream(const std::string& cmd, const LoadOptions& filt,
+                              CacheWriter& w, size_t& nfiles) {
   FILE* p = popen(cmd.c_str(), "r");
   if (!p) return false;
   std::deque<std::string> q;
@@ -155,7 +173,8 @@ static bool ingest_tar_stream(const std::string& cmd, const LoadOptions& filt, C
         }
         cv_put.notify_one();
         const std::string* src = &raw;
-        if (raw.size() > 2 && (unsigned char)raw[0] == 0x1f && (unsigned char)raw[1] == 0x8b) {
+        if (raw.size() > 2 && (unsigned char)raw[0] == 0x1f &&
+            (unsigned char)raw[1] == 0x8b) {
           if (!gunzip(raw, text)) {
             ++bad;
             continue;
@@ -170,12 +189,16 @@ static bool ingest_tar_stream(const std::string& cmd, const LoadOptions& filt, C
         fl.clear();
         parse_readsb_trace(j, filt, fl);
         for (auto& f : fl) {
-          std::sort(f.s.begin(), f.s.end(), [](const RawSample& a, const RawSample& b) { return a.t < b.t; });
+          std::sort(
+              f.s.begin(), f.s.end(),
+              [](const RawSample& a, const RawSample& b) { return a.t < b.t; });
           w.add(f);
         }
       }
     });
-  auto readn = [&](char* buf, size_t n) { return std::fread(buf, 1, n, p) == n; };
+  auto readn = [&](char* buf, size_t n) {
+    return std::fread(buf, 1, n, p) == n;
+  };
   char hdr[512];
   std::string longname;
   bool ok = true;
@@ -183,17 +206,23 @@ static bool ingest_tar_stream(const std::string& cmd, const LoadOptions& filt, C
   size_t bytes = 0;
   while (readn(hdr, 512)) {
     bool zero = true;
-    for (char c : hdr) zero &= c == 0;
-    if (zero) continue;  // end-of-archive blocks (may repeat between concatenated parts)
+    for (char c : hdr)
+      zero &= c == 0;
+    if (zero)
+      continue;  // end-of-archive blocks (may repeat between concatenated
+                 // parts)
     uint64_t size = tar_num(hdr + 124, 12);
     char type = hdr[156];
-    std::string name = longname.empty() ? std::string(hdr, strnlen(hdr, 100)) : longname;
+    std::string name =
+        longname.empty() ? std::string(hdr, strnlen(hdr, 100)) : longname;
     longname.clear();
-    if (!std::memcmp(hdr + 257, "ustar", 5) && hdr[345] && name.find('/') == std::string::npos)
+    if (!std::memcmp(hdr + 257, "ustar", 5) && hdr[345] &&
+        name.find('/') == std::string::npos)
       name = std::string(hdr + 345, strnlen(hdr + 345, 155)) + "/" + name;
     uint64_t padded = (size + 511) / 512 * 512;
     std::string data;
-    bool want = (type == '0' || type == 0) && name.find("trace_full_") != std::string::npos;
+    bool want = (type == '0' || type == 0) &&
+                name.find("trace_full_") != std::string::npos;
     if (type == 'L' || want) {
       data.resize(padded);
       if (padded && !readn(data.data(), padded)) {
@@ -227,15 +256,18 @@ static bool ingest_tar_stream(const std::string& cmd, const LoadOptions& filt, C
     }
     cv_get.notify_one();
     if (g_verbose && nfiles % 5000 == 0)
-      std::fprintf(stderr, "  ... %zu traces, %.0f MB, %.0f MB/s, %llu legs kept\r", nfiles, bytes / 1e6,
-                   bytes / 1e6 / std::max(1e-3, tm.sec()), (unsigned long long)w.flights());
+      std::fprintf(stderr,
+                   "  ... %zu traces, %.0f MB, %.0f MB/s, %llu legs kept\r",
+                   nfiles, bytes / 1e6, bytes / 1e6 / std::max(1e-3, tm.sec()),
+                   (unsigned long long)w.flights());
   }
   {
     std::lock_guard<std::mutex> lk(mu);
     eof = true;
   }
   cv_get.notify_all();
-  for (auto& t : workers) t.join();
+  for (auto& t : workers)
+    t.join();
   int rc = pclose(p);
   if (g_verbose) std::fprintf(stderr, "\n");
   if (bad) log("update: %zu unparsable trace files skipped", (size_t)bad);
@@ -248,28 +280,34 @@ int run_update(const UpdateOptions& o) {
   for (const std::string& date : o.dates) {
     std::string out = db_day_path(o.db, date);
     if (!o.force && fs::exists(out)) {
-      log("update %s: %s already present (use --force to rebuild)", date.c_str(), out.c_str());
+      log("update %s: %s already present (use --force to rebuild)",
+          date.c_str(), out.c_str());
       continue;
     }
     auto urls = release_parts(o.curl, date);
     if (urls.empty()) {
-      log("update %s: no published adsb.lol release (daily dumps appear ~1 day later; GitHub API rate limit "
-          "is 60/h without GITHUB_TOKEN)", date.c_str());
+      log("update %s: no published adsb.lol release (daily dumps appear ~1 day "
+          "later; GitHub API rate limit "
+          "is 60/h without GITHUB_TOKEN)",
+          date.c_str());
       ++failures;
       continue;
     }
     std::string cmd = "(";
-    for (auto& u : urls) cmd += o.curl + " -fsSL --retry 3 " + shq(u) + "; ";
+    for (auto& u : urls)
+      cmd += o.curl + " -fsSL --retry 3 " + shq(u) + "; ";
     cmd += ")";
     Timer t;
     CacheWriter w(out);
     LoadOptions f = o.filter;
     double d0 = parse_time(date);
-    f.tmin = std::max(f.tmin, d0 - 3600);  // traces are per UTC day; keep a little overlap
+    f.tmin = std::max(
+        f.tmin, d0 - 3600);  // traces are per UTC day; keep a little overlap
     f.tmax = std::min(f.tmax, d0 + 86400 + 3600);
     size_t nfiles = 0;
     if (!ingest_tar_stream(cmd, f, w, nfiles) || nfiles == 0) {
-      log("update %s: download/extract failed after %zu traces", date.c_str(), nfiles);
+      log("update %s: download/extract failed after %zu traces", date.c_str(),
+          nfiles);
       ++failures;
       continue;  // CacheWriter destructor discards the partial file
     }
@@ -277,13 +315,17 @@ int run_update(const UpdateOptions& o) {
     {
       FILE* m = std::fopen((out + ".meta").c_str(), "w");
       if (m) {
-        std::fprintf(m, "bbox %.4f %.4f %.4f %.4f\nmax_alt_m %.0f\nsource adsb.lol\nbuilt %s\n", f.minlon, f.minlat,
-                     f.maxlon, f.maxlat, f.max_alt_m, fmt_time((double)std::time(nullptr)).c_str());
+        std::fprintf(m,
+                     "bbox %.4f %.4f %.4f %.4f\nmax_alt_m %.0f\nsource "
+                     "adsb.lol\nbuilt %s\n",
+                     f.minlon, f.minlat, f.maxlon, f.maxlat, f.max_alt_m,
+                     fmt_time((double)std::time(nullptr)).c_str());
         std::fclose(m);
       }
     }
-    log("update %s: %zu traces -> %llu legs, %llu samples -> %s (%.0fs)", date.c_str(), nfiles,
-        (unsigned long long)w.flights(), (unsigned long long)w.samples(), out.c_str(), t.sec());
+    log("update %s: %zu traces -> %llu legs, %llu samples -> %s (%.0fs)",
+        date.c_str(), nfiles, (unsigned long long)w.flights(),
+        (unsigned long long)w.samples(), out.c_str(), t.sec());
   }
   return failures;
 }
@@ -296,12 +338,15 @@ void print_db(const std::string& db) {
   std::vector<std::string> v;
   for (auto& e : fs::directory_iterator(db)) {
     std::string n = e.path().filename().string();
-    if (n.rfind("adsb_", 0) == 0 && n.size() > 9 && n.substr(n.size() - 4) == ".plb")
-      v.push_back(n.substr(5, 10) + "  " + std::to_string(e.file_size() / (1 << 20)) + " MB");
+    if (n.rfind("adsb_", 0) == 0 && n.size() > 9 &&
+        n.substr(n.size() - 4) == ".plb")
+      v.push_back(n.substr(5, 10) + "  " +
+                  std::to_string(e.file_size() / (1 << 20)) + " MB");
   }
   std::sort(v.begin(), v.end());
   std::printf("database %s: %zu day(s)\n", db.c_str(), v.size());
-  for (auto& s : v) std::printf("  %s\n", s.c_str());
+  for (auto& s : v)
+    std::printf("  %s\n", s.c_str());
 }
 
 }  // namespace pl

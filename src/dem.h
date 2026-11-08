@@ -1,5 +1,6 @@
-// Digital elevation model: SRTM/Copernicus-style .hgt tiles (1" or 3"), bilinear sampling.
-// Elevations are metres above mean sea level. Missing tiles fall back to a constant.
+// Digital elevation model: SRTM/Copernicus-style .hgt tiles (1" or 3"),
+// bilinear sampling. Elevations are metres above mean sea level. Missing tiles
+// fall back to a constant.
 #pragma once
 #include <cstdint>
 #include <map>
@@ -10,8 +11,10 @@ namespace pl {
 
 class Dem {
  public:
-  Dem(std::string dir, double default_elev) : dir_(std::move(dir)), def_(default_elev) {}
-  // Load every tile intersecting the bounding box. After this, elev() is lock-free / thread-safe.
+  Dem(std::string dir, double default_elev)
+      : dir_(std::move(dir)), def_(default_elev) {}
+  // Load every tile intersecting the bounding box. After this, elev() is
+  // lock-free / thread-safe.
   void preload(double minlat, double maxlat, double minlon, double maxlon);
   double elev(double lat, double lon) const;
   bool has_data() const { return !tiles_.empty(); }

@@ -6,17 +6,21 @@ Vec3 geodetic_to_ecef(double lat_deg, double lon_deg, double h) {
   double la = lat_deg * kDeg, lo = lon_deg * kDeg;
   double sl = std::sin(la), cl = std::cos(la);
   double N = kWgsA / std::sqrt(1.0 - kWgsE2 * sl * sl);
-  return {(N + h) * cl * std::cos(lo), (N + h) * cl * std::sin(lo), (N * (1.0 - kWgsE2) + h) * sl};
+  return {(N + h) * cl * std::cos(lo), (N + h) * cl * std::sin(lo),
+          (N * (1.0 - kWgsE2) + h) * sl};
 }
 
-void ecef_to_geodetic(const Vec3& p, double& lat_deg, double& lon_deg, double& h) {
-  // Bowring's method with two refinement iterations (sub-mm for aviation altitudes).
+void ecef_to_geodetic(const Vec3& p, double& lat_deg, double& lon_deg,
+                      double& h) {
+  // Bowring's method with two refinement iterations (sub-mm for aviation
+  // altitudes).
   double b = kWgsA * (1.0 - kWgsF);
   double ep2 = (kWgsA * kWgsA - b * b) / (b * b);
   double r = std::sqrt(p.x * p.x + p.y * p.y);
   double lon = std::atan2(p.y, p.x);
   double th = std::atan2(p.z * kWgsA, r * b);
-  double lat = std::atan2(p.z + ep2 * b * std::pow(std::sin(th), 3), r - kWgsE2 * kWgsA * std::pow(std::cos(th), 3));
+  double lat = std::atan2(p.z + ep2 * b * std::pow(std::sin(th), 3),
+                          r - kWgsE2 * kWgsA * std::pow(std::cos(th), 3));
   for (int it = 0; it < 2; ++it) {
     double sl = std::sin(lat);
     double N = kWgsA / std::sqrt(1.0 - kWgsE2 * sl * sl);
@@ -25,20 +29,26 @@ void ecef_to_geodetic(const Vec3& p, double& lat_deg, double& lon_deg, double& h
   }
   double sl = std::sin(lat);
   double N = kWgsA / std::sqrt(1.0 - kWgsE2 * sl * sl);
-  h = (std::fabs(std::cos(lat)) > 1e-9) ? r / std::cos(lat) - N : std::fabs(p.z) - b;
+  h = (std::fabs(std::cos(lat)) > 1e-9) ? r / std::cos(lat) - N
+                                        : std::fabs(p.z) - b;
   lat_deg = lat / kDeg;
   lon_deg = lon / kDeg;
 }
 
-Vec3 enu_to_ecef_dir(double lat_deg, double lon_deg, double e, double n, double u) {
+Vec3 enu_to_ecef_dir(double lat_deg, double lon_deg, double e, double n,
+                     double u) {
   double la = lat_deg * kDeg, lo = lon_deg * kDeg;
-  double sl = std::sin(la), cl = std::cos(la), so = std::sin(lo), co = std::cos(lo);
-  return {-so * e - sl * co * n + cl * co * u, co * e - sl * so * n + cl * so * u, cl * n + sl * u};
+  double sl = std::sin(la), cl = std::cos(la), so = std::sin(lo),
+         co = std::cos(lo);
+  return {-so * e - sl * co * n + cl * co * u,
+          co * e - sl * so * n + cl * so * u, cl * n + sl * u};
 }
 
-void ecef_dir_to_enu(double lat_deg, double lon_deg, const Vec3& d, double& e, double& n, double& u) {
+void ecef_dir_to_enu(double lat_deg, double lon_deg, const Vec3& d, double& e,
+                     double& n, double& u) {
   double la = lat_deg * kDeg, lo = lon_deg * kDeg;
-  double sl = std::sin(la), cl = std::cos(la), so = std::sin(lo), co = std::cos(lo);
+  double sl = std::sin(la), cl = std::cos(la), so = std::sin(lo),
+         co = std::cos(lo);
   e = -so * d.x + co * d.y;
   n = -sl * co * d.x - sl * so * d.y + cl * d.z;
   u = cl * co * d.x + cl * so * d.y + sl * d.z;
@@ -47,7 +57,8 @@ void ecef_dir_to_enu(double lat_deg, double lon_deg, const Vec3& d, double& e, d
 double haversine_m(double lat1, double lon1, double lat2, double lon2) {
   double dla = (lat2 - lat1) * kDeg, dlo = (lon2 - lon1) * kDeg;
   double a = std::sin(dla / 2) * std::sin(dla / 2) +
-             std::cos(lat1 * kDeg) * std::cos(lat2 * kDeg) * std::sin(dlo / 2) * std::sin(dlo / 2);
+             std::cos(lat1 * kDeg) * std::cos(lat2 * kDeg) * std::sin(dlo / 2) *
+                 std::sin(dlo / 2);
   return 2.0 * 6371008.8 * std::asin(std::sqrt(std::min(1.0, a)));
 }
 

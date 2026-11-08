@@ -1,4 +1,5 @@
-// Small self-contained I/O helpers: PNG writer, minimal JSON DOM, gzip-aware file reading.
+// Small self-contained I/O helpers: PNG writer, minimal JSON DOM, gzip-aware
+// file reading.
 #pragma once
 #include <cstdint>
 #include <string>

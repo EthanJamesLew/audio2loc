@@ -12,14 +12,20 @@
 namespace pl {
 
 // ---------------------------------------------------------------- WAV ---
-static uint32_t rd32(const unsigned char* p) { return p[0] | (p[1] << 8) | (p[2] << 16) | ((uint32_t)p[3] << 24); }
-static uint16_t rd16(const unsigned char* p) { return (uint16_t)(p[0] | (p[1] << 8)); }
+static uint32_t rd32(const unsigned char* p) {
+  return p[0] | (p[1] << 8) | (p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+static uint16_t rd16(const unsigned char* p) {
+  return (uint16_t)(p[0] | (p[1] << 8));
+}
 
 static bool read_wav(const std::string& path, Audio& out) {
   std::ifstream f(path, std::ios::binary);
   if (!f) return false;
-  std::vector<unsigned char> buf((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-  if (buf.size() < 12 || std::memcmp(buf.data(), "RIFF", 4) != 0 || std::memcmp(buf.data() + 8, "WAVE", 4) != 0)
+  std::vector<unsigned char> buf((std::istreambuf_iterator<char>(f)),
+                                 std::istreambuf_iterator<char>());
+  if (buf.size() < 12 || std::memcmp(buf.data(), "RIFF", 4) != 0 ||
+      std::memcmp(buf.data() + 8, "WAVE", 4) != 0)
     return false;
   size_t p = 12;
   int fmt_tag = 0, ch = 0, bits = 0;
@@ -35,7 +41,8 @@ static bool read_wav(const std::string& path, Audio& out) {
       ch = rd16(c + 2);
       sr = rd32(c + 4);
       bits = rd16(c + 14);
-      if (fmt_tag == 0xFFFE && avail >= 26) fmt_tag = rd16(c + 24);  // WAVE_FORMAT_EXTENSIBLE subformat
+      if (fmt_tag == 0xFFFE && avail >= 26)
+        fmt_tag = rd16(c + 24);  // WAVE_FORMAT_EXTENSIBLE subformat
     } else if (!std::memcmp(&buf[p], "data", 4)) {
       data = c;
       data_len = avail;
@@ -70,7 +77,8 @@ static bool read_wav(const std::string& path, Audio& out) {
       } else if (fmt_tag == 1 && bits == 32) {
         v = (int32_t)rd32(s) / 2147483648.0;
       } else {
-        die("%s: unsupported WAV encoding (format %d, %d bits)", path.c_str(), fmt_tag, bits);
+        die("%s: unsupported WAV encoding (format %d, %d bits)", path.c_str(),
+            fmt_tag, bits);
       }
       acc += v;
     }
@@ -98,7 +106,8 @@ void write_wav16(const std::string& path, const Audio& a) {
   std::fwrite("data", 1, 4, f);
   w32(n * 2);
   std::vector<int16_t> pcm(n);
-  for (uint32_t i = 0; i < n; ++i) pcm[i] = (int16_t)std::lround(std::clamp(a.x[i], -1.f, 1.f) * 32767.f);
+  for (uint32_t i = 0; i < n; ++i)
+    pcm[i] = (int16_t)std::lround(std::clamp(a.x[i], -1.f, 1.f) * 32767.f);
   std::fwrite(pcm.data(), 2, n, f);
   std::fclose(f);
 }
@@ -106,7 +115,8 @@ void write_wav16(const std::string& path, const Audio& a) {
 Audio decimate(const Audio& a, double target_sr) {
   int D = (int)std::floor(a.sr / target_sr);
   if (D <= 1) return a;
-  // Blackman-windowed sinc low-pass at 0.45 * output Nyquist... keep 90% of the new band.
+  // Blackman-windowed sinc low-pass at 0.45 * output Nyquist... keep 90% of the
+  // new band.
   int half = 8 * D;
   double fc = 0.5 / D * 0.9;
   std::vector<float> h(2 * half + 1);
@@ -114,11 +124,13 @@ Audio decimate(const Audio& a, double target_sr) {
   for (int k = -half; k <= half; ++k) {
     double x = k;
     double s = k == 0 ? 2 * fc : std::sin(2 * kPi * fc * x) / (kPi * x);
-    double w = 0.42 + 0.5 * std::cos(kPi * x / half) + 0.08 * std::cos(2 * kPi * x / half);
+    double w = 0.42 + 0.5 * std::cos(kPi * x / half) +
+               0.08 * std::cos(2 * kPi * x / half);
     h[k + half] = (float)(s * w);
     sum += s * w;
   }
-  for (auto& v : h) v = (float)(v / sum);
+  for (auto& v : h)
+    v = (float)(v / sum);
   Audio o;
   o.sr = a.sr / D;
   size_t n = a.x.size() / D;
@@ -140,33 +152,44 @@ Audio decimate(const Audio& a, double target_sr) {
   return o;
 }
 
-Audio load_audio(const std::string& path, double target_sr, const std::string& ffmpeg) {
+Audio load_audio(const std::string& path, double target_sr,
+                 const std::string& ffmpeg) {
   Audio a;
   if (!file_exists(path)) die("audio file not found: %s", path.c_str());
   if (read_wav(path, a)) {
-    log("audio: %s  %.0f Hz  %.1f s (native WAV)", path.c_str(), a.sr, a.duration());
+    log("audio: %s  %.0f Hz  %.1f s (native WAV)", path.c_str(), a.sr,
+        a.duration());
     return decimate(a, target_sr);
   }
-  // Decode anything else with ffmpeg: mono float32 at a rate that is an integer multiple of target.
+  // Decode anything else with ffmpeg: mono float32 at a rate that is an integer
+  // multiple of target.
   int out_sr = (int)std::lround(target_sr);
   std::string esc;
   for (char c : path) {
-    if (c == '\'') esc += "'\\''";
-    else esc += c;
+    if (c == '\'')
+      esc += "'\\''";
+    else
+      esc += c;
   }
-  std::string cmd = ffmpeg + " -nostdin -v error -i '" + esc + "' -vn -ac 1 -ar " + std::to_string(out_sr) +
+  std::string cmd = ffmpeg + " -nostdin -v error -i '" + esc +
+                    "' -vn -ac 1 -ar " + std::to_string(out_sr) +
                     " -f f32le -acodec pcm_f32le - ";
   FILE* p = popen(cmd.c_str(), "r");
-  if (!p) die("failed to run ffmpeg (needed for non-WAV input). Install ffmpeg or pass --ffmpeg PATH");
+  if (!p)
+    die("failed to run ffmpeg (needed for non-WAV input). Install ffmpeg or "
+        "pass --ffmpeg PATH");
   std::vector<float> buf(1 << 16);
   size_t got;
-  while ((got = std::fread(buf.data(), sizeof(float), buf.size(), p)) > 0) a.x.insert(a.x.end(), buf.begin(), buf.begin() + got);
+  while ((got = std::fread(buf.data(), sizeof(float), buf.size(), p)) > 0)
+    a.x.insert(a.x.end(), buf.begin(), buf.begin() + got);
   int rc = pclose(p);
   if (rc != 0 || a.x.empty())
-    die("ffmpeg failed to decode %s (exit %d). Is ffmpeg installed? Use --ffmpeg PATH or convert to WAV.",
+    die("ffmpeg failed to decode %s (exit %d). Is ffmpeg installed? Use "
+        "--ffmpeg PATH or convert to WAV.",
         path.c_str(), rc);
   a.sr = out_sr;
-  log("audio: %s  %d Hz  %.1f s (via ffmpeg)", path.c_str(), out_sr, a.duration());
+  log("audio: %s  %d Hz  %.1f s (via ffmpeg)", path.c_str(), out_sr,
+      a.duration());
   return a;
 }
 
@@ -174,14 +197,16 @@ Audio load_audio(const std::string& path, double target_sr, const std::string& f
 FFT::FFT(int n) : n_(n), rev_(n), tw_(n / 2) {
   if (n & (n - 1)) die("FFT size must be a power of two");
   int lg = 0;
-  while ((1 << lg) < n) ++lg;
+  while ((1 << lg) < n)
+    ++lg;
   for (int i = 0; i < n; ++i) {
     int r = 0;
     for (int b = 0; b < lg; ++b)
       if (i & (1 << b)) r |= 1 << (lg - 1 - b);
     rev_[i] = r;
   }
-  for (int i = 0; i < n / 2; ++i) tw_[i] = std::polar(1.0f, (float)(-2.0 * kPi * i / n));
+  for (int i = 0; i < n / 2; ++i)
+    tw_[i] = std::polar(1.0f, (float)(-2.0 * kPi * i / n));
 }
 
 void FFT::forward(std::complex<float>* d) const {
@@ -200,12 +225,14 @@ void FFT::forward(std::complex<float>* d) const {
 }
 
 // -------------------------------------------------------- spectrogram ---
-Spectrogram compute_spectrogram(const Audio& a, double win_s, double hop_s, double t_begin, double t_end,
-                                double fmin, double fmax, int zero_pad) {
+Spectrogram compute_spectrogram(const Audio& a, double win_s, double hop_s,
+                                double t_begin, double t_end, double fmin,
+                                double fmax, int zero_pad) {
   Spectrogram s;
   int wl = std::max(16, (int)std::lround(win_s * a.sr));
   int nfft = 1;
-  while (nfft < wl * zero_pad) nfft <<= 1;
+  while (nfft < wl * zero_pad)
+    nfft <<= 1;
   s.win = wl / a.sr;
   s.hop = hop_s;
   s.df = a.sr / nfft;
@@ -219,7 +246,8 @@ Spectrogram compute_spectrogram(const Audio& a, double win_s, double hop_s, doub
   s.v.assign((size_t)s.nframes * s.nbins, 0.f);
   // GPU (cuFFT) for large transforms; identical windowing/normalisation
   if (gpu::enabled() && (double)s.nframes * nfft > 4e6 &&
-      gpu::stft_db(a.x.data(), a.x.size(), a.sr, wl, nfft, s.t0, hop_s, s.nframes, s.bin0, s.nbins, s.v.data()))
+      gpu::stft_db(a.x.data(), a.x.size(), a.sr, wl, nfft, s.t0, hop_s,
+                   s.nframes, s.bin0, s.nbins, s.v.data()))
     return s;
   std::vector<float> win(wl);
   double wsum = 0;
@@ -230,46 +258,51 @@ Spectrogram compute_spectrogram(const Audio& a, double win_s, double hop_s, doub
   FFT fft(nfft);
   long N = (long)a.x.size();
   int nt = num_threads();
-  std::vector<std::vector<std::complex<float>>> bufs(nt, std::vector<std::complex<float>>(nfft));
+  std::vector<std::vector<std::complex<float>>> bufs(
+      nt, std::vector<std::complex<float>>(nfft));
   double norm = 2.0 / wsum;
-  parallel_for(
-      (size_t)s.nframes,
-      [&](size_t f, int tid) {
-        auto& b = bufs[tid];
-        long c = std::lround(s.time((int)f) * a.sr);
-        long st = c - wl / 2;
-        for (int i = 0; i < nfft; ++i) b[i] = 0;
-        for (int i = 0; i < wl; ++i) {
-          long j = st + i;
-          if (j >= 0 && j < N) b[i] = a.x[j] * win[i];
-        }
-        fft.forward(b.data());
-        float* row = &s.v[f * s.nbins];
-        for (int k = 0; k < s.nbins; ++k) {
-          double m = std::abs(b[s.bin0 + k]) * norm;
-          row[k] = (float)(20.0 * std::log10(m + 1e-12));
-        }
-      },
-      8);
+  parallel_for((size_t)s.nframes,
+               [&](size_t f, int tid) {
+                 auto& b = bufs[tid];
+                 long c = std::lround(s.time((int)f) * a.sr);
+                 long st = c - wl / 2;
+                 for (int i = 0; i < nfft; ++i)
+                   b[i] = 0;
+                 for (int i = 0; i < wl; ++i) {
+                   long j = st + i;
+                   if (j >= 0 && j < N) b[i] = a.x[j] * win[i];
+                 }
+                 fft.forward(b.data());
+                 float* row = &s.v[f * s.nbins];
+                 for (int k = 0; k < s.nbins; ++k) {
+                   double m = std::abs(b[s.bin0 + k]) * norm;
+                   row[k] = (float)(20.0 * std::log10(m + 1e-12));
+                 }
+               },
+               8);
   return s;
 }
 
 void whiten(Spectrogram& s, float clip) {
   parallel_for((size_t)s.nbins, [&](size_t b, int) {
     std::vector<float> col(s.nframes);
-    for (int f = 0; f < s.nframes; ++f) col[f] = s.at(f, (int)b);
+    for (int f = 0; f < s.nframes; ++f)
+      col[f] = s.at(f, (int)b);
     if (col.empty()) return;
     auto mid = col.begin() + col.size() / 2;
     std::nth_element(col.begin(), mid, col.end());
     float med = *mid;
-    for (auto& v : col) v = std::fabs(v - med);
+    for (auto& v : col)
+      v = std::fabs(v - med);
     std::nth_element(col.begin(), mid, col.end());
     float mad = std::max(1e-3f, *mid * 1.4826f);
-    for (int f = 0; f < s.nframes; ++f) s.at(f, (int)b) = std::clamp((s.at(f, (int)b) - med) / mad, 0.f, clip);
+    for (int f = 0; f < s.nframes; ++f)
+      s.at(f, (int)b) = std::clamp((s.at(f, (int)b) - med) / mad, 0.f, clip);
   });
 }
 
-LogImage to_log_image(const Spectrogram& w, double fmin, double fmax, double dln) {
+LogImage to_log_image(const Spectrogram& w, double fmin, double fmax,
+                      double dln) {
   LogImage L;
   L.t0 = w.t0;
   L.hop = w.hop;
@@ -320,7 +353,8 @@ LogImage LogImage::blurred(int rf, int rr) const {
       int add = f + rf, sub = f - rf - 1;
       if (add >= 0 && add < nf) acc += tmp[(size_t)add * nr + r];
       if (sub >= 0 && sub < nf) acc -= tmp[(size_t)sub * nr + r];
-      if (f >= 0 && f < nf) o.v[(size_t)f * nr + r] = (float)(acc / (2 * rf + 1));
+      if (f >= 0 && f < nf)
+        o.v[(size_t)f * nr + r] = (float)(acc / (2 * rf + 1));
     }
   }
   return o;

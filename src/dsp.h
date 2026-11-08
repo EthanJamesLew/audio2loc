@@ -12,9 +12,11 @@ struct Audio {
   double duration() const { return sr > 0 ? x.size() / sr : 0; }
 };
 
-// Loads WAV natively; anything else (mp4, mkv, mp3, m4a, ...) is decoded through ffmpeg.
-// Output is mono, low-pass filtered and decimated to roughly target_sr (>= target_sr).
-Audio load_audio(const std::string& path, double target_sr, const std::string& ffmpeg = "ffmpeg");
+// Loads WAV natively; anything else (mp4, mkv, mp3, m4a, ...) is decoded
+// through ffmpeg. Output is mono, low-pass filtered and decimated to roughly
+// target_sr (>= target_sr).
+Audio load_audio(const std::string& path, double target_sr,
+                 const std::string& ffmpeg = "ffmpeg");
 void write_wav16(const std::string& path, const Audio& a);
 Audio decimate(const Audio& a, double target_sr);
 
@@ -30,7 +32,8 @@ class FFT {
   std::vector<std::complex<float>> tw_;
 };
 
-// Magnitude spectrogram in dB. Frame f is centred at t0 + f*hop (audio seconds).
+// Magnitude spectrogram in dB. Frame f is centred at t0 + f*hop (audio
+// seconds).
 struct Spectrogram {
   double t0 = 0, hop = 0, win = 0, df = 0;
   int nframes = 0, nbins = 0, bin0 = 0;  // bins [bin0, bin0+nbins) of the FFT
@@ -41,14 +44,17 @@ struct Spectrogram {
   double time(int f) const { return t0 + f * hop; }
 };
 
-Spectrogram compute_spectrogram(const Audio& a, double win_s, double hop_s, double t_begin, double t_end,
-                                double fmin, double fmax, int zero_pad = 2);
-// Per-frequency background removal: z = (dB - median_t) / (1.4826*MAD_t), clipped to [0, clip].
+Spectrogram compute_spectrogram(const Audio& a, double win_s, double hop_s,
+                                double t_begin, double t_end, double fmin,
+                                double fmax, int zero_pad = 2);
+// Per-frequency background removal: z = (dB - median_t) / (1.4826*MAD_t),
+// clipped to [0, clip].
 void whiten(Spectrogram& s, float clip = 8.f);
 
-// Spectrogram resampled onto a log-frequency axis: row r <-> f = exp(lnf0 + r*dln).
-// In this domain a Doppler curve f(t) = f0 * g(t) shifts vertically by an integer when f0 changes,
-// and harmonics m*f0 are a constant row offset ln(m)/dln.
+// Spectrogram resampled onto a log-frequency axis: row r <-> f = exp(lnf0 +
+// r*dln). In this domain a Doppler curve f(t) = f0 * g(t) shifts vertically by
+// an integer when f0 changes, and harmonics m*f0 are a constant row offset
+// ln(m)/dln.
 struct LogImage {
   double t0 = 0, hop = 0, lnf0 = 0, dln = 0;
   int nf = 0, nr = 0;
@@ -61,9 +67,11 @@ struct LogImage {
   double time(int f) const { return t0 + f * hop; }
   double row_of(double f) const { return (std::log(f) - lnf0) / dln; }
   double freq(double r) const { return std::exp(lnf0 + r * dln); }
-  LogImage blurred(int rf, int rr) const;  // box blur (separable), radius in frames / rows
+  LogImage blurred(
+      int rf, int rr) const;  // box blur (separable), radius in frames / rows
 };
 
-LogImage to_log_image(const Spectrogram& whitened, double fmin, double fmax, double dln);
+LogImage to_log_image(const Spectrogram& whitened, double fmin, double fmax,
+                      double dln);
 
 }  // namespace pl

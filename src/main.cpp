@@ -1,4 +1,5 @@
-// planeloc - geolocate a recording from the Doppler curves of aircraft flyovers + ADS-B history.
+// planeloc - geolocate a recording from the Doppler curves of aircraft flyovers
+// + ADS-B history.
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -24,7 +25,8 @@
 
 using namespace pl;
 
-static const char* kUsage = R"(planeloc - locate a recording from aircraft Doppler curves + ADS-B history
+static const char* kUsage =
+    R"(planeloc - locate a recording from aircraft Doppler curves + ADS-B history
 
 usage: planeloc <command> [options]
 
@@ -97,19 +99,23 @@ struct Args {
   double num(const std::string& k, double def) const {
     if (!has(k)) return def;
     double v;
-    if (!parse_double(get(k), v)) die("--%s expects a number, got '%s'", k.c_str(), get(k).c_str());
+    if (!parse_double(get(k), v))
+      die("--%s expects a number, got '%s'", k.c_str(), get(k).c_str());
     return v;
   }
   std::vector<std::string> all(const std::string& k) const {
     std::vector<std::string> o;
     auto r = kv.equal_range(k);
-    for (auto it = r.first; it != r.second; ++it) o.push_back(it->second);
+    for (auto it = r.first; it != r.second; ++it)
+      o.push_back(it->second);
     return o;
   }
 };
 
 static Args parse_args(int argc, char** argv) {
-  static const char* flags[] = {"include-jets", "no-silence", "no-osm", "v", "q", "help", "h", "auto-update", "latest", "force", "list", "no-gpu"};
+  static const char* flags[] = {
+      "include-jets", "no-silence", "no-osm", "v",    "q",     "help", "h",
+      "auto-update",  "latest",     "force",  "list", "no-gpu"};
   Args a;
   if (argc < 2) {
     std::fputs(kUsage, stdout);
@@ -126,7 +132,8 @@ static Args parse_args(int argc, char** argv) {
       k = k.substr(0, eq);
     } else {
       bool is_flag = false;
-      for (auto f : flags) is_flag |= k == f;
+      for (auto f : flags)
+        is_flag |= k == f;
       if (!is_flag) {
         if (i + 1 >= argc) die("--%s needs a value", k.c_str());
         v = argv[++i];
@@ -140,7 +147,8 @@ static Args parse_args(int argc, char** argv) {
 static std::pair<double, double> range2(const std::string& s) {
   auto p = split(s, ':');
   double a, b;
-  if (p.size() != 2 || !parse_double(p[0], a) || !parse_double(p[1], b)) die("bad range '%s' (want MIN:MAX)", s.c_str());
+  if (p.size() != 2 || !parse_double(p[0], a) || !parse_double(p[1], b))
+    die("bad range '%s' (want MIN:MAX)", s.c_str());
   return {a, b};
 }
 
@@ -150,16 +158,22 @@ static EventSpec parse_event(const std::string& spec) {
   for (auto& kvs : split(spec, ',')) {
     auto eq = kvs.find('=');
     if (eq == std::string::npos) die("bad --event item '%s'", kvs.c_str());
-    std::string k = lower(trim(kvs.substr(0, eq))), v = trim(kvs.substr(eq + 1));
+    std::string k = lower(trim(kvs.substr(0, eq))),
+                v = trim(kvs.substr(eq + 1));
     double x = 0;
     auto num = [&] {
-      if (!parse_double(v, x)) die("--event %s: not a number '%s'", k.c_str(), v.c_str());
+      if (!parse_double(v, x))
+        die("--event %s: not a number '%s'", k.c_str(), v.c_str());
       return x;
     };
-    if (k == "t0") e.t0 = num(), have[0] = true;
-    else if (k == "t1") e.t1 = num(), have[1] = true;
-    else if (k == "fmin") e.fmin = num(), have[2] = true;
-    else if (k == "fmax") e.fmax = num(), have[3] = true;
+    if (k == "t0")
+      e.t0 = num(), have[0] = true;
+    else if (k == "t1")
+      e.t1 = num(), have[1] = true;
+    else if (k == "fmin")
+      e.fmin = num(), have[2] = true;
+    else if (k == "fmax")
+      e.fmax = num(), have[3] = true;
     else if (k == "mult") {
       e.mult.clear();
       for (auto& m : split(v, ':')) {
@@ -167,17 +181,27 @@ static EventSpec parse_event(const std::string& spec) {
         if (!parse_double(m, y) || y <= 0) die("bad mult '%s'", v.c_str());
         e.mult.push_back(y);
       }
-    } else if (k == "side") e.side = v == "before" ? -1 : v == "after" ? 1 : 0;
-    else if (k == "score") e.ridge_score = v == "ridge";
-    else if (k == "trace") e.trace = v, e.ridge_score = true;
-    else if (k == "v") std::tie(e.vmin, e.vmax) = range2(v);
-    else if (k == "d") std::tie(e.dmin, e.dmax) = range2(v);
-    else if (k == "f0") std::tie(e.f0min, e.f0max) = range2(v);
-    else if (k == "tc") e.tc = num();
-    else if (k == "tc_tol") e.tc_tol = num();
-    else die("unknown --event key '%s'", k.c_str());
+    } else if (k == "side")
+      e.side = v == "before" ? -1 : v == "after" ? 1 : 0;
+    else if (k == "score")
+      e.ridge_score = v == "ridge";
+    else if (k == "trace")
+      e.trace = v, e.ridge_score = true;
+    else if (k == "v")
+      std::tie(e.vmin, e.vmax) = range2(v);
+    else if (k == "d")
+      std::tie(e.dmin, e.dmax) = range2(v);
+    else if (k == "f0")
+      std::tie(e.f0min, e.f0max) = range2(v);
+    else if (k == "tc")
+      e.tc = num();
+    else if (k == "tc_tol")
+      e.tc_tol = num();
+    else
+      die("unknown --event key '%s'", k.c_str());
   }
-  if (!(have[0] && have[1] && have[2] && have[3])) die("--event needs t0, t1, fmin, fmax");
+  if (!(have[0] && have[1] && have[2] && have[3]))
+    die("--event needs t0, t1, fmin, fmax");
   if (e.t1 <= e.t0 || e.fmax <= e.fmin) die("--event box is empty");
   return e;
 }
@@ -194,15 +218,19 @@ static SearchParams common_params(const Args& a) {
 static int cmd_spectrogram(const Args& a) {
   SearchParams P = common_params(a);
   Audio au = load_audio(a.get("audio"), P.target_sr, a.get("ffmpeg", "ffmpeg"));
-  double t0 = a.num("t0", 0), t1 = a.num("t1", au.duration()), f0 = a.num("fmin", 20), f1 = a.num("fmax", 600);
+  double t0 = a.num("t0", 0), t1 = a.num("t1", au.duration()),
+         f0 = a.num("fmin", 20), f1 = a.num("fmax", 600);
   Spectrogram s = compute_spectrogram(au, P.win, P.hop, t0, t1, f0, f1);
   whiten(s);
-  int ys = (int)a.num("yscale", std::max(1.0, std::round(400.0 / std::max(1, s.nbins))));
+  int ys = (int)a.num("yscale",
+                      std::max(1.0, std::round(400.0 / std::max(1, s.nbins))));
   Image img = render_spectrogram(s, t0, t1, f0, f1, {}, ys);
   std::string out = a.get("o", a.get("out", "spectrogram.png"));
   write_png(out, img);
-  std::printf("%s: %dx%d px  x: %.3f s/px from t=%.2f  y: %.3f Hz/px (top=%.1f Hz, bottom=%.1f Hz)\n", out.c_str(), img.w,
-              img.h, s.hop, s.t0, s.df / ys, f1, f0);
+  std::printf(
+      "%s: %dx%d px  x: %.3f s/px from t=%.2f  y: %.3f Hz/px (top=%.1f Hz, "
+      "bottom=%.1f Hz)\n",
+      out.c_str(), img.w, img.h, s.hop, s.t0, s.df / ys, f1, f0);
   return 0;
 }
 
@@ -210,7 +238,8 @@ static int cmd_measure(const Args& a) {
   SearchParams P = common_params(a);
   Audio au = load_audio(a.get("audio"), P.target_sr, a.get("ffmpeg", "ffmpeg"));
   std::vector<EventSpec> specs;
-  for (auto& s : a.all("event")) specs.push_back(parse_event(s));
+  for (auto& s : a.all("event"))
+    specs.push_back(parse_event(s));
   if (specs.empty()) die("measure needs at least one --event");
   auto ev = prepare_events(au, specs, P);
   print_events(ev);
@@ -219,14 +248,18 @@ static int cmd_measure(const Args& a) {
   for (size_t k = 0; k < ev.size(); ++k) {
     const Event& e = ev[k];
     Curve ridge{{}, {60, 255, 60}}, fit{{}, {80, 255, 255}};
-    for (size_t i = 0; i < e.ridge.t.size(); ++i) ridge.tf.push_back({e.ridge.t[i], e.ridge.f[i]});
+    for (size_t i = 0; i < e.ridge.t.size(); ++i)
+      ridge.tf.push_back({e.ridge.t[i], e.ridge.f[i]});
     for (double t = e.spec.t0; t <= e.spec.t1; t += P.hop)
-      fit.tf.push_back({t, e.fit.f0 * std::exp(straight_lng(t, e.fit.v, e.fit.d, e.fit.tc, P.c))});
-    Image img = render_spectrogram(e.white, e.spec.t0 - 5, e.spec.t1 + 5, e.spec.fmin * 0.85, e.spec.fmax * 1.15,
+      fit.tf.push_back({t, e.fit.f0 * std::exp(straight_lng(t, e.fit.v, e.fit.d,
+                                                            e.fit.tc, P.c))});
+    Image img = render_spectrogram(e.white, e.spec.t0 - 5, e.spec.t1 + 5,
+                                   e.spec.fmin * 0.85, e.spec.fmax * 1.15,
                                    {ridge, fit}, 2);
     std::string p = out + "/measure_event" + std::to_string(k + 1) + ".png";
     write_png(p, img);
-    std::printf("wrote %s (green: traced ridge, cyan: straight-line fit)\n", p.c_str());
+    std::printf("wrote %s (green: traced ridge, cyan: straight-line fit)\n",
+                p.c_str());
   }
   return 0;
 }
@@ -242,8 +275,10 @@ static LoadOptions load_opts(const Args& a) {
     double v[4];
     for (int i = 0; i < 4; ++i)
       if (!parse_double(p[i], v[i])) die("--bbox W,S,E,N");
-    double m = 0.15;  // keep flights just outside the box: they can be heard inside it
-    o.minlon = v[0] - m, o.minlat = v[1] - m, o.maxlon = v[2] + m, o.maxlat = v[3] + m;
+    double m =
+        0.15;  // keep flights just outside the box: they can be heard inside it
+    o.minlon = v[0] - m, o.minlat = v[1] - m, o.maxlon = v[2] + m,
+    o.maxlat = v[3] + m;
   }
   o.max_alt_m = a.num("max-alt", o.max_alt_m);
   o.geoid_undulation = a.num("geoid", 0);
@@ -257,12 +292,15 @@ static int cmd_ingest(const Args& a) {
   LoadOptions o = load_opts(a);
   o.min_dt = a.num("min-dt", 0);  // keep full resolution in caches unless asked
   std::vector<Flight> fl;
-  for (auto& p : a.all("adsb")) load_adsb(p, o, fl);
+  for (auto& p : a.all("adsb"))
+    load_adsb(p, o, fl);
   std::string out = a.get("o", a.get("out", "adsb.plb"));
   save_cache(out, fl);
   size_t ns = 0;
-  for (auto& f : fl) ns += f.s.size();
-  std::printf("wrote %s: %zu flight legs, %zu samples\n", out.c_str(), fl.size(), ns);
+  for (auto& f : fl)
+    ns += f.s.size();
+  std::printf("wrote %s: %zu flight legs, %zu samples\n", out.c_str(),
+              fl.size(), ns);
   return 0;
 }
 
@@ -270,7 +308,8 @@ static int cmd_locate(const Args& a) {
   SearchParams P = common_params(a);
   if (a.has("types")) load_type_table(a.get("types"));
   std::vector<EventSpec> specs;
-  for (auto& s : a.all("event")) specs.push_back(parse_event(s));
+  for (auto& s : a.all("event"))
+    specs.push_back(parse_event(s));
   if (specs.empty()) die("locate needs at least one --event");
   if (!a.has("audio")) die("locate needs --audio");
   if (!a.has("adsb") && !a.has("db")) die("locate needs --adsb or --db");
@@ -287,7 +326,8 @@ static int cmd_locate(const Args& a) {
   P.silence_radius = a.num("silence-radius", P.silence_radius);
   P.silence_radius_jet = a.num("silence-radius-jet", P.silence_radius_jet);
   P.silence_guard = a.num("silence-guard", P.silence_guard);
-  for (auto& q : a.all("quiet")) P.quiet.push_back(range2(q));
+  for (auto& q : a.all("quiet"))
+    P.quiet.push_back(range2(q));
   P.include_jets = a.has("include-jets");
   P.dt_sweep = a.num("dt-sweep", P.dt_sweep);
   P.top = (int)a.num("top", P.top);
@@ -299,7 +339,9 @@ static int cmd_locate(const Args& a) {
   P.tile_deg = a.num("tile-deg", P.tile_deg);
   P.mem_limit = resolve_mem_limit(a.num("mem-limit", 0));
   start_mem_watchdog(P.mem_limit);
-  log("memory limit %.1f GB (override with --mem-limit GB or PLANELOC_MEM_LIMIT)", gb(P.mem_limit));
+  log("memory limit %.1f GB (override with --mem-limit GB or "
+      "PLANELOC_MEM_LIMIT)",
+      gb(P.mem_limit));
   P.outdir = a.get("out", P.outdir);
   P.qgis_native_out = a.get("qgz");
   LoadOptions lo = load_opts(a);
@@ -308,7 +350,8 @@ static int cmd_locate(const Args& a) {
   if (a.has("rec-start")) {
     P.rec_start = parse_time(a.get("rec-start"));
     P.rec_start_tol = a.num("rec-start-tol", P.rec_start_tol);
-    double span = P.rec_start_tol + 4 * 3600;  // recordings are rarely > a few hours
+    double span =
+        P.rec_start_tol + 4 * 3600;  // recordings are rarely > a few hours
     lo.tmin = std::max(lo.tmin, P.rec_start - span);
     lo.tmax = std::min(lo.tmax, P.rec_start + span);
   }
@@ -319,13 +362,18 @@ static int cmd_locate(const Args& a) {
 
   std::vector<std::string> sources = a.all("adsb");
   if (a.has("db")) {
-    double t0 = std::isfinite(P.rec_start) ? P.rec_start - P.rec_start_tol - 600 : lo.tmin;
-    double t1 = std::isfinite(P.rec_start) ? P.rec_start + P.rec_start_tol + au.duration() + 600 : lo.tmax;
-    if (t0 < -1e299 || t1 > 1e299) die("--db needs a time window (--start/--end or --rec-start)");
+    double t0 = std::isfinite(P.rec_start) ? P.rec_start - P.rec_start_tol - 600
+                                           : lo.tmin;
+    double t1 = std::isfinite(P.rec_start)
+                    ? P.rec_start + P.rec_start_tol + au.duration() + 600
+                    : lo.tmax;
+    if (t0 < -1e299 || t1 > 1e299)
+      die("--db needs a time window (--start/--end or --rec-start)");
     UpdateOptions uo;
     uo.db = a.get("db");
     uo.dates = dates_between(t0, t1);
-    if (uo.dates.size() > 14) die("time window spans %zu days; narrow --start/--end", uo.dates.size());
+    if (uo.dates.size() > 14)
+      die("time window spans %zu days; narrow --start/--end", uo.dates.size());
     if (a.has("auto-update")) {
       uo.filter.max_alt_m = lo.max_alt_m;
       run_update(uo);
@@ -335,34 +383,42 @@ static int cmd_locate(const Args& a) {
       if (file_exists(p)) {
         sources.push_back(p);
         double w, s, e, n;
-        if (db_day_bbox(p, w, s, e, n) && (w > -179.9 || e < 179.9 || s > -89.9 || n < 89.9) &&
+        if (db_day_bbox(p, w, s, e, n) &&
+            (w > -179.9 || e < 179.9 || s > -89.9 || n < 89.9) &&
             (lo.minlon < w || lo.maxlon > e || lo.minlat < s || lo.maxlat > n))
-          log("db: WARNING %s only covers bbox %.2f,%.2f,%.2f,%.2f - the search area extends outside it", p.c_str(),
-              w, s, e, n);
-      }
-      else log("db: missing %s (run `planeloc update --db %s --date %s` or pass --auto-update)", p.c_str(),
-               uo.db.c_str(), d.c_str());
+          log("db: WARNING %s only covers bbox %.2f,%.2f,%.2f,%.2f - the "
+              "search area extends outside it",
+              p.c_str(), w, s, e, n);
+      } else
+        log("db: missing %s (run `planeloc update --db %s --date %s` or pass "
+            "--auto-update)",
+            p.c_str(), uo.db.c_str(), d.c_str());
     }
   }
   if (sources.empty()) die("no ADS-B source: pass --adsb or --db");
   std::vector<Flight> flights;
-  for (auto& p : sources) load_adsb(p, lo, flights);
+  for (auto& p : sources)
+    load_adsb(p, lo, flights);
   if (flights.empty()) die("no ADS-B data in the requested window");
   auto tracks = build_tracks(flights, a.num("max-gap", 90));
   // raw samples are no longer needed (labels only from here on)
   size_t raw = 0;
-  for (auto& f : flights) raw += f.s.capacity() * sizeof(RawSample), std::vector<RawSample>().swap(f.s);
-  log("tracks: %zu legs built; released %.1f GB of raw samples (rss %.1f GB)", tracks.size(), gb(raw),
-      gb(current_rss_bytes()));
+  for (auto& f : flights)
+    raw += f.s.capacity() * sizeof(RawSample),
+        std::vector<RawSample>().swap(f.s);
+  log("tracks: %zu legs built; released %.1f GB of raw samples (rss %.1f GB)",
+      tracks.size(), gb(raw), gb(current_rss_bytes()));
 
   Dem dem(a.get("dem"), a.num("elev", 0));
   if (a.has("dem")) {
     double mila = 90, mala = -90, milo = 180, malo = -180;
     for (auto& t : tracks)
-      mila = std::min(mila, t.minlat), mala = std::max(mala, t.maxlat), milo = std::min(milo, t.minlon),
-      malo = std::max(malo, t.maxlon);
+      mila = std::min(mila, t.minlat), mala = std::max(mala, t.maxlat),
+      milo = std::min(milo, t.minlon), malo = std::max(malo, t.maxlon);
     dem.preload(mila - 0.1, mala + 0.1, milo - 0.1, malo + 0.1);
-    if (!dem.has_data()) log("dem: no tiles found in %s - using constant %.0f m", a.get("dem").c_str(), a.num("elev", 0));
+    if (!dem.has_data())
+      log("dem: no tiles found in %s - using constant %.0f m",
+          a.get("dem").c_str(), a.num("elev", 0));
   }
   return run_locate(au, flights, tracks, dem, events, P);
 }
@@ -380,19 +436,25 @@ static int cmd_update(const Args& a) {
     return 0;
   }
   LoadOptions lo = load_opts(a);
-  o.filter.minlat = lo.minlat, o.filter.maxlat = lo.maxlat, o.filter.minlon = lo.minlon, o.filter.maxlon = lo.maxlon;
+  o.filter.minlat = lo.minlat, o.filter.maxlat = lo.maxlat,
+  o.filter.minlon = lo.minlon, o.filter.maxlon = lo.maxlon;
   o.filter.max_alt_m = lo.max_alt_m;
   o.filter.geoid_undulation = lo.geoid_undulation;
   o.force = a.has("force");
   o.curl = a.get("curl", "curl");
-  for (auto& d : a.all("date")) o.dates.push_back(utc_date(parse_time(d)));
+  for (auto& d : a.all("date"))
+    o.dates.push_back(utc_date(parse_time(d)));
   if (a.has("from")) {
-    double t0 = parse_time(a.get("from")), t1 = a.has("to") ? parse_time(a.get("to")) : t0;
-    for (auto& d : dates_between(t0, t1)) o.dates.push_back(d);
+    double t0 = parse_time(a.get("from")),
+           t1 = a.has("to") ? parse_time(a.get("to")) : t0;
+    for (auto& d : dates_between(t0, t1))
+      o.dates.push_back(d);
   }
   if (a.has("latest") || o.dates.empty()) {
     std::string d = latest_available_date(o.curl);
-    if (d.empty()) die("could not find a recent adsb.lol release (network? GitHub rate limit? set GITHUB_TOKEN)");
+    if (d.empty())
+      die("could not find a recent adsb.lol release (network? GitHub rate "
+          "limit? set GITHUB_TOKEN)");
     log("update: newest published day is %s", d.c_str());
     o.dates.push_back(d);
   }
@@ -404,7 +466,8 @@ static int cmd_update(const Args& a) {
 static int cmd_mcp(const Args& a) {
   g_verbose = 0;  // stdout belongs to the protocol
   std::string self = std::filesystem::read_symlink("/proc/self/exe").string();
-  return run_mcp_server(self, a.get("work", env_or("PLANELOC_WORK", "planeloc_work")),
+  return run_mcp_server(self,
+                        a.get("work", env_or("PLANELOC_WORK", "planeloc_work")),
                         a.get("db", env_or("PLANELOC_DB", "planeloc_db")));
 }
 
@@ -437,13 +500,15 @@ int main(int argc, char** argv) {
   if (a.has("v")) g_verbose = 2;
   if (a.has("q")) g_verbose = 0;
   if (a.has("j")) g_threads = (int)a.num("j", 0);
-  if (a.cmd == "-h" || a.cmd == "--help" || a.cmd == "help" || a.has("help") || a.has("h")) {
+  if (a.cmd == "-h" || a.cmd == "--help" || a.cmd == "help" || a.has("help") ||
+      a.has("h")) {
     std::fputs(kUsage, stdout);
     return 0;
   }
   if (a.cmd == "spectrogram" || a.cmd == "measure" || a.cmd == "locate") {
     bool on = gpu::init(!a.has("no-gpu"), (int)a.num("gpu-device", 0));
-    if (gpu::compiled()) log("gpu: %s", on ? gpu::info().c_str() : gpu::info().c_str());
+    if (gpu::compiled())
+      log("gpu: %s", on ? gpu::info().c_str() : gpu::info().c_str());
   }
   if (a.cmd == "spectrogram") return cmd_spectrogram(a);
   if (a.cmd == "measure") return cmd_measure(a);

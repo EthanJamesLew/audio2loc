@@ -22,7 +22,10 @@ static void stamp() {
     return e && *e && *e != '0';
   }();
   if (on)
-    std::fprintf(stderr, "[%8.3f] ", std::chrono::duration<double>(std::chrono::steady_clock::now() - g_t0).count());
+    std::fprintf(
+        stderr, "[%8.3f] ",
+        std::chrono::duration<double>(std::chrono::steady_clock::now() - g_t0)
+            .count());
 }
 
 void log(const char* fmt, ...) {
@@ -75,12 +78,14 @@ double parse_time(const std::string& in) {
   if (parse_double(s, num)) return num;
   int Y = 0, M = 0, D = 0, h = 0, m = 0;
   double sec = 0;
-  if (std::sscanf(s.c_str(), "%d-%d-%d", &Y, &M, &D) != 3) throw std::runtime_error("bad time: " + s);
+  if (std::sscanf(s.c_str(), "%d-%d-%d", &Y, &M, &D) != 3)
+    throw std::runtime_error("bad time: " + s);
   size_t p = 10;
   if (p < s.size() && (s[p] == 'T' || s[p] == ' ' || s[p] == 't')) {
     ++p;
     int n = 0;
-    if (std::sscanf(s.c_str() + p, "%d:%d%n", &h, &m, &n) < 2) throw std::runtime_error("bad time: " + s);
+    if (std::sscanf(s.c_str() + p, "%d:%d%n", &h, &m, &n) < 2)
+      throw std::runtime_error("bad time: " + s);
     p += n;
     if (p < s.size() && s[p] == ':') {
       ++p;
@@ -96,7 +101,8 @@ double parse_time(const std::string& in) {
     } else if (c == '+' || c == '-') {
       int th = 0, tm = 0;
       std::sscanf(s.c_str() + p + 1, "%d:%d", &th, &tm);
-      if (s.size() - p - 1 == 4 && s.find(':', p) == std::string::npos) {  // +hhmm
+      if (s.size() - p - 1 == 4 &&
+          s.find(':', p) == std::string::npos) {  // +hhmm
         int v = std::atoi(s.c_str() + p + 1);
         th = v / 100;
         tm = v % 100;
@@ -125,8 +131,9 @@ std::string fmt_time(double t) {
   std::tm tmv{};
   gmtime_r(&s, &tmv);
   char buf[64];
-  std::snprintf(buf, sizeof buf, "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ", tmv.tm_year + 1900, tmv.tm_mon + 1,
-                tmv.tm_mday, tmv.tm_hour, tmv.tm_min, tmv.tm_sec, ms);
+  std::snprintf(buf, sizeof buf, "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
+                tmv.tm_year + 1900, tmv.tm_mon + 1, tmv.tm_mday, tmv.tm_hour,
+                tmv.tm_min, tmv.tm_sec, ms);
   return buf;
 }
 
@@ -147,13 +154,16 @@ std::vector<std::string> split(const std::string& s, char sep) {
 
 std::string trim(const std::string& s) {
   size_t a = 0, b = s.size();
-  while (a < b && std::isspace((unsigned char)s[a])) ++a;
-  while (b > a && std::isspace((unsigned char)s[b - 1])) --b;
+  while (a < b && std::isspace((unsigned char)s[a]))
+    ++a;
+  while (b > a && std::isspace((unsigned char)s[b - 1]))
+    --b;
   return s.substr(a, b - a);
 }
 
 std::string lower(std::string s) {
-  for (auto& c : s) c = (char)std::tolower((unsigned char)c);
+  for (auto& c : s)
+    c = (char)std::tolower((unsigned char)c);
   return s;
 }
 
@@ -189,7 +199,8 @@ size_t mem_available_bytes() {
   return (size_t)8 << 30;
 }
 
-// Tightest cgroup-v2 memory.max on the path of this process (containers, systemd scopes), or 0.
+// Tightest cgroup-v2 memory.max on the path of this process (containers,
+// systemd scopes), or 0.
 static size_t cgroup_limit_bytes() {
   std::ifstream f("/proc/self/cgroup");
   std::string line, path;
@@ -205,7 +216,8 @@ static size_t cgroup_limit_bytes() {
     }
     if (path.empty() || path == "/") break;
     size_t p = path.find_last_of('/');
-    path = p == std::string::npos || p == 0 ? std::string("/") : path.substr(0, p);
+    path =
+        p == std::string::npos || p == 0 ? std::string("/") : path.substr(0, p);
   }
   return best;
 }
@@ -216,8 +228,10 @@ size_t resolve_mem_limit(double g) {
     if (e && *e) g = std::atof(e);
   }
   size_t cg = cgroup_limit_bytes();
-  size_t lim = g > 0 ? (size_t)(g * 1073741824.0) : current_rss_bytes() + mem_available_bytes() / 2;
-  if (cg && lim > cg * 85 / 100) lim = cg * 85 / 100;  // stay under a container / scope limit
+  size_t lim = g > 0 ? (size_t)(g * 1073741824.0)
+                     : current_rss_bytes() + mem_available_bytes() / 2;
+  if (cg && lim > cg * 85 / 100)
+    lim = cg * 85 / 100;  // stay under a container / scope limit
   return lim;
 }
 
@@ -227,8 +241,10 @@ void start_mem_watchdog(size_t limit) {
       size_t r = current_rss_bytes();
       if (r > limit) {
         std::fprintf(stderr,
-                     "\nerror: memory limit exceeded (%.1f GB resident > %.1f GB limit). Narrow the search "
-                     "(--bbox, shorter --start/--end, --rec-start) or raise --mem-limit.\n",
+                     "\nerror: memory limit exceeded (%.1f GB resident > %.1f "
+                     "GB limit). Narrow the search "
+                     "(--bbox, shorter --start/--end, --rec-start) or raise "
+                     "--mem-limit.\n",
                      gb(r), gb(limit));
         std::fflush(stderr);
         _exit(3);

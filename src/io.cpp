@@ -38,7 +38,8 @@ static void put32(std::vector<unsigned char>& v, uint32_t x) {
   v.push_back(x);
 }
 
-static void chunk(FILE* f, const char* type, const std::vector<unsigned char>& data) {
+static void chunk(FILE* f, const char* type,
+                  const std::vector<unsigned char>& data) {
   std::vector<unsigned char> buf;
   put32(buf, (uint32_t)data.size());
   buf.insert(buf.end(), type, type + 4);
@@ -77,12 +78,14 @@ void write_png(const std::string& path, const Image& img) {
 }
 
 RGB colormap(float t) {
-  static const float k[][3] = {{0, 0, 4},      {40, 11, 84},   {101, 21, 110}, {159, 42, 99},
-                               {212, 72, 66},  {245, 125, 21}, {250, 193, 39}, {252, 255, 164}};
+  static const float k[][3] = {{0, 0, 4},      {40, 11, 84},   {101, 21, 110},
+                               {159, 42, 99},  {212, 72, 66},  {245, 125, 21},
+                               {250, 193, 39}, {252, 255, 164}};
   t = std::clamp(t, 0.f, 1.f) * 7.f;
   int i = std::min(6, (int)t);
   float u = t - i;
-  return RGB{(uint8_t)(k[i][0] + (k[i + 1][0] - k[i][0]) * u), (uint8_t)(k[i][1] + (k[i + 1][1] - k[i][1]) * u),
+  return RGB{(uint8_t)(k[i][0] + (k[i + 1][0] - k[i][0]) * u),
+             (uint8_t)(k[i][1] + (k[i + 1][1] - k[i][1]) * u),
              (uint8_t)(k[i][2] + (k[i + 1][2] - k[i][2]) * u)};
 }
 
@@ -93,7 +96,8 @@ bool read_file_maybe_gz(const std::string& path, std::string& out) {
   out.clear();
   char buf[1 << 16];
   int n;
-  while ((n = gzread(g, buf, sizeof buf)) > 0) out.append(buf, n);
+  while ((n = gzread(g, buf, sizeof buf)) > 0)
+    out.append(buf, n);
   gzclose(g);
   return n >= 0;
 }
@@ -112,7 +116,8 @@ struct JP {
   const char* e;
   std::string err;
   void ws() {
-    while (p < e && (*p == ' ' || *p == '\n' || *p == '\r' || *p == '\t')) ++p;
+    while (p < e && (*p == ' ' || *p == '\n' || *p == '\r' || *p == '\t'))
+      ++p;
   }
   bool str(std::string& s) {
     ++p;  // opening quote
@@ -120,21 +125,38 @@ struct JP {
       if (*p == '\\' && p + 1 < e) {
         ++p;
         switch (*p) {
-          case 'n': s += '\n'; break;
-          case 't': s += '\t'; break;
-          case 'r': s += '\r'; break;
-          case 'b': s += '\b'; break;
-          case 'f': s += '\f'; break;
+          case 'n':
+            s += '\n';
+            break;
+          case 't':
+            s += '\t';
+            break;
+          case 'r':
+            s += '\r';
+            break;
+          case 'b':
+            s += '\b';
+            break;
+          case 'f':
+            s += '\f';
+            break;
           case 'u': {
             if (e - p < 5) return false;
-            unsigned cp = std::strtoul(std::string(p + 1, p + 5).c_str(), nullptr, 16);
-            if (cp < 0x80) s += (char)cp;
-            else if (cp < 0x800) s += (char)(0xC0 | (cp >> 6)), s += (char)(0x80 | (cp & 0x3F));
-            else s += (char)(0xE0 | (cp >> 12)), s += (char)(0x80 | ((cp >> 6) & 0x3F)), s += (char)(0x80 | (cp & 0x3F));
+            unsigned cp =
+                std::strtoul(std::string(p + 1, p + 5).c_str(), nullptr, 16);
+            if (cp < 0x80)
+              s += (char)cp;
+            else if (cp < 0x800)
+              s += (char)(0xC0 | (cp >> 6)), s += (char)(0x80 | (cp & 0x3F));
+            else
+              s += (char)(0xE0 | (cp >> 12)),
+                  s += (char)(0x80 | ((cp >> 6) & 0x3F)),
+                  s += (char)(0x80 | (cp & 0x3F));
             p += 4;
             break;
           }
-          default: s += *p;
+          default:
+            s += *p;
         }
         ++p;
       } else {
@@ -166,7 +188,10 @@ struct JP {
         v.o.emplace_back(std::move(k), JVal{});
         if (!val(v.o.back().second, depth + 1)) return false;
         ws();
-        if (p < e && *p == ',') { ++p; continue; }
+        if (p < e && *p == ',') {
+          ++p;
+          continue;
+        }
         if (p < e && *p == '}') return ++p, true;
         return false;
       }
@@ -180,7 +205,10 @@ struct JP {
         v.a.emplace_back();
         if (!val(v.a.back(), depth + 1)) return false;
         ws();
-        if (p < e && *p == ',') { ++p; continue; }
+        if (p < e && *p == ',') {
+          ++p;
+          continue;
+        }
         if (p < e && *p == ']') return ++p, true;
         return false;
       }
@@ -189,9 +217,12 @@ struct JP {
       v.t = JVal::Str;
       return str(v.s);
     }
-    if (c == 't' && e - p >= 4 && !std::memcmp(p, "true", 4)) return v.t = JVal::Bool, v.b = true, p += 4, true;
-    if (c == 'f' && e - p >= 5 && !std::memcmp(p, "false", 5)) return v.t = JVal::Bool, p += 5, true;
-    if (c == 'n' && e - p >= 4 && !std::memcmp(p, "null", 4)) return v.t = JVal::Null, p += 4, true;
+    if (c == 't' && e - p >= 4 && !std::memcmp(p, "true", 4))
+      return v.t = JVal::Bool, v.b = true, p += 4, true;
+    if (c == 'f' && e - p >= 5 && !std::memcmp(p, "false", 5))
+      return v.t = JVal::Bool, p += 5, true;
+    if (c == 'n' && e - p >= 4 && !std::memcmp(p, "null", 4))
+      return v.t = JVal::Null, p += 4, true;
     char* end;
     v.n = std::strtod(p, &end);
     if (end == p) return false;
@@ -205,19 +236,22 @@ struct JP {
 bool parse_json(const std::string& text, JVal& out, std::string* err) {
   JP jp{text.data(), text.data() + text.size(), {}};
   bool ok = jp.val(out, 0);
-  if (!ok && err) *err = "parse error at offset " + std::to_string(jp.p - text.data());
+  if (!ok && err)
+    *err = "parse error at offset " + std::to_string(jp.p - text.data());
   return ok;
 }
 
 std::string json_escape(const std::string& s) {
   std::string o;
   for (char c : s) {
-    if (c == '"' || c == '\\') o += '\\', o += c;
+    if (c == '"' || c == '\\')
+      o += '\\', o += c;
     else if ((unsigned char)c < 0x20) {
       char b[8];
       std::snprintf(b, sizeof b, "\\u%04x", c);
       o += b;
-    } else o += c;
+    } else
+      o += c;
   }
   return o;
 }
