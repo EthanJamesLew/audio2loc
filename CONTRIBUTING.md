@@ -13,9 +13,8 @@ within 50 m of the hidden observer. Sanitizer builds take `-DCMAKE_BUILD_TYPE=De
 "-DAUDIO2LOC_SANITIZE=address;undefined"`.
 
 CI (`.github/workflows/ci.yml`) checks formatting and builds with `-Werror`. It runs every test on
-GCC 12 and 14, Clang 18, Linux arm64 and macOS. It also runs ASan/UBSan, builds CUDA (where
-a CUDA build must fall back to the CPU and still pass), and builds the Docker image and runs a smoke
-test.
+GCC 12 and 14, Clang 18 and Linux arm64. It also runs ASan/UBSan, builds CUDA (where a CUDA build
+must fall back to the CPU and still pass), and builds the Docker image and runs a smoke test.
 
 ## C++ style
 
@@ -67,8 +66,8 @@ source needs editing to release. `audio2loc --version` and the MCP server report
 | `-DAUDIO2LOC_VERSION=1.2.0` (builds without git, e.g. Docker) | `1.2.0` |
 
 To release, go to **Releases > Draft a new release** on GitHub, type a new tag such as `v0.2.0`, and
-publish. The Release workflow builds and tests the tag on Linux x86-64 and arm64 (glibc 2.35+) and
-on macOS arm64. It checks that each binary reports the tag, then attaches the
-`audio2loc-<version>-<target>.tar.gz` archives and their checksums to the release. It also pushes
+publish. The Release workflow builds and tests the tag on Linux x86-64 and arm64 (glibc 2.35+). It
+checks that each binary reports the tag, then attaches the `audio2loc-<version>-<target>.tar.gz`
+archives and their checksums to the release. It also pushes
 `ghcr.io/<owner>/audio2loc:<version>` and `:<version>-cuda`, plus `:latest` and `:cuda` for
 non-pre-releases. Running the workflow by hand (**Actions > Release > Run workflow**) is a dry run.

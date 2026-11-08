@@ -37,17 +37,12 @@ jobs:
           - { name: ubuntu-24.04 / gcc-14, os: ubuntu-24.04, cxx: g++-14, pkgs: g++-14 }
           - { name: ubuntu-24.04 / clang-18, os: ubuntu-24.04, cxx: clang++-18, pkgs: clang-18 }
           - { name: ubuntu-24.04-arm / gcc-13, os: ubuntu-24.04-arm, cxx: g++-13, pkgs: g++-13 }
-          - { name: macos-15 / apple-clang, os: macos-15, cxx: clang++ }
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # the version comes from the tags
-      - name: Toolchain (Linux)
-        if: runner.os == 'Linux'
+      - name: Toolchain
         run: sudo apt-get update && sudo apt-get install -y ninja-build zlib1g-dev ${{ matrix.pkgs }}
-      - name: Toolchain (macOS)
-        if: runner.os == 'macOS'
-        run: brew install ninja
       - name: Configure
         run: >
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAUDIO2LOC_WERROR=ON

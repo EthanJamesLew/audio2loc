@@ -1,8 +1,8 @@
 name: Release
 
-# Publishing a release on GitHub builds its tag for Linux (x86-64, arm64) and
-# macOS (arm64), attaches the archives to the release, and pushes the Docker
-# images to ghcr.io. Run by hand, this is a dry run: the archives stay workflow
+# Publishing a release on GitHub builds its tag for Linux (x86-64, arm64),
+# attaches the archives to the release, and pushes the Docker images to
+# ghcr.io. Run by hand, this is a dry run: the archives stay workflow
 # artifacts and no image is pushed. CONTRIBUTING.md has the steps.
 on:
   release:
@@ -43,26 +43,21 @@ jobs:
         include:
           - { target: linux-x86_64, os: ubuntu-22.04, cxx: g++-12, pkgs: g++-12 }
           - { target: linux-arm64, os: ubuntu-22.04-arm, cxx: g++-12, pkgs: g++-12 }
-          - { target: macos-arm64, os: macos-15, cxx: clang++ }
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # the version comes from the tags
-      - name: Toolchain (Linux)
-        if: runner.os == 'Linux'
+      - name: Toolchain
         run: sudo apt-get update && sudo apt-get install -y ninja-build zlib1g-dev ${{ matrix.pkgs }}
-      - name: Toolchain (macOS)
-        if: runner.os == 'macOS'
-        run: brew install ninja
-      # libstdc++ is linked statically so the Linux binary needs only glibc 2.35+
-      # and zlib; macOS 13+ on Apple silicon.
+      # libstdc++ is linked statically so the binary needs only glibc 2.35+
+      # and zlib.
       - name: Configure
         run: >
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAUDIO2LOC_WERROR=ON
           -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
-          ${{ runner.os == 'Linux' && '"-DCMAKE_EXE_LINKER_FLAGS=-static-libstdc++ -static-libgcc"' || '-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0' }}
+          "-DCMAKE_EXE_LINKER_FLAGS=-static-libstdc++ -static-libgcc"
       - run: cmake --build build -j
       - name: The binary reports the tag
         if: github.event_name == 'release'
