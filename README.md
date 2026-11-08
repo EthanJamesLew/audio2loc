@@ -14,6 +14,65 @@ metadata, so audio2loc works on those copies too. Use it to verify or investigat
 subject consents or that is of public interest, not to find private individuals.
 [docs/guide.md](docs/guide.md) covers the method, every option and the benchmarks.
 
+## How it works
+
+These figures come from a run on a simulated recording (`audio2loc simulate --seed 7`): 6 hours
+of traffic over Long Island, 23 minutes of audio, and a hidden observer that the search has to find.
+`tools/explainer_figures.py` redraws them from audio2loc's own outputs.
+
+**1. Find the flyovers.** A plane's propeller and engine hum at a steady pitch, so a flyover leaves
+a falling S-curve on a spectrogram, often quieter than you can hear. audio2loc whitens the
+spectrogram, normalizing each frequency against its own noise floor, so faint curves stand out.
+You draw a box around one tone of each flyover.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/01-spectrogram-dark.png">
+  <img alt="Spectrogram of a 23-minute recording with two boxed Doppler curves" src="docs/images/01-spectrogram-light.png">
+</picture>
+
+**2. The physics.** The pitch you hear is the tone f₀ shifted by how fast the plane is closing on
+you. The pitch falls through f₀ at the moment of closest approach, t_c. How far it moves depends on
+the speed v, and how sharply it turns depends on the closest distance d. Sound takes seconds to
+arrive, so the model evaluates the plane's velocity when the sound was *emitted*, not when it was
+heard. Using the time it was heard gives a different, wrong curve.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/02-doppler-model-dark.png">
+  <img alt="Model Doppler curves for different closest distances and speeds" src="docs/images/02-doppler-model-light.png">
+</picture>
+
+**3. Measure.** audio2loc traces the ridge of each curve and fits the straight-line model, which
+gives speed, distance, time and tone, each with a generous uncertainty range. Two flyovers also fix
+the time between them (921 s here). Flyover 2 was turning, so the straight-line fit misses its
+start; that's fine, because the fit only bounds the search, and step 4 uses the real track.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/03-measure-dark.png">
+  <img alt="Spectrogram zooms of both flyovers with the fitted curves" src="docs/images/03-measure-light.png">
+</picture>
+
+**4. Search.** Every ADS-B track in the time window is a suspect. Stages A–C are cheap geometric
+tests on a 200 m grid. A keeps ground points that a plane passed at the measured distance and speed.
+B keeps those that also heard a second pass at the right offset. C drops points where another
+aircraft would have been audible in between. Only then does D compute, for each surviving point and
+flight pair, the exact curve that point would have heard from the real trajectory. It scores that
+curve against the spectrogram, harmonics included.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/04-search-dark.png">
+  <img alt="Four maps showing the candidates left after each search stage" src="docs/images/04-search-light.png">
+</picture>
+
+**5. Rank and refine.** The best-scoring flight pair wins, and a dense 25 m score map around it
+gives the final answer. Here that answer is 11 m from the hidden observer. Against a full day of
+real ADS-B traffic over California, with a simulated recording, it lands 39 m from the truth.
+Outputs are ranked coordinates, GeoJSON for every stage and a QGIS project.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/05-result-dark.png">
+  <img alt="The two matched flight tracks and the refined score heatmap around the true location" src="docs/images/05-result-light.png">
+</picture>
+
 ## Build
 
 ```sh
