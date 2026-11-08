@@ -3,9 +3,9 @@ build/
 build-*/
 bench/
 test_db/
-planeloc_db/
-planeloc_out/
-planeloc_work/
+audio2loc_db/
+audio2loc_out/
+audio2loc_work/
 *.plb
 *.wav
 *.mp4

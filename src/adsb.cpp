@@ -300,7 +300,7 @@ static void load_cache(const std::string& path, const LoadOptions& o,
   uint64_t n = 0;
   if (std::fread(mg, 1, 8, f) != 8 || std::memcmp(mg, kMagic, 8) ||
       std::fread(&n, 8, 1, f) != 1)
-    die("%s: not a planeloc cache", path.c_str());
+    die("%s: not a audio2loc cache", path.c_str());
   auto rs = [&](std::string& s) {
     uint32_t l = 0;
     if (std::fread(&l, 4, 1, f) != 1) die("truncated cache");
@@ -352,7 +352,6 @@ void load_adsb(const std::string& path, const LoadOptions& o,
     log("adsb: scanning %zu files in %s", files.size(), path.c_str());
     int nt = num_threads();
     std::vector<std::vector<Flight>> part(nt);
-    std::mutex mu;
     parallel_for(files.size(), [&](size_t i, int tid) {
       const std::string& p = files[i];
       if (ends_with(p, ".csv") || ends_with(p, ".csv.gz") ||

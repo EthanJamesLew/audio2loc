@@ -244,7 +244,7 @@ static std::string renderer_xml(const LayerSpec& L) {
 void write_qgs_project(const std::string& path, const ProjectSpec& p) {
   std::ofstream o(path);
   if (!o) die("cannot write %s", path.c_str());
-  auto lid = [](size_t i) { return "planeloc_layer_" + std::to_string(i); };
+  auto lid = [](size_t i) { return "audio2loc_layer_" + std::to_string(i); };
   // EPSG:3857 extent for the canvas
   auto merc = [](double lon, double lat, double& x, double& y) {
     x = lon * kDeg * 6378137.0;
@@ -267,7 +267,7 @@ void write_qgs_project(const std::string& path, const ProjectSpec& p) {
       << "\" expanded=\"0\"><customproperties/></layer-tree-layer>\n";
   }
   if (p.osm_basemap)
-    o << "    <layer-tree-layer id=\"planeloc_osm\" name=\"OpenStreetMap\" "
+    o << "    <layer-tree-layer id=\"audio2loc_osm\" name=\"OpenStreetMap\" "
          "source=\"\" providerKey=\"wms\" "
          "checked=\"Qt::Checked\" "
          "expanded=\"0\"><customproperties/></layer-tree-layer>\n";
@@ -294,7 +294,7 @@ void write_qgs_project(const std::string& path, const ProjectSpec& p) {
   if (p.osm_basemap)
     o << "    <maplayer type=\"raster\" hasScaleBasedVisibilityFlag=\"0\" "
          "autoRefreshEnabled=\"0\">\n"
-      << "      <id>planeloc_osm</id>\n"
+      << "      <id>audio2loc_osm</id>\n"
       << "      "
          "<datasource>type=xyz&amp;url=https://tile.openstreetmap.org/%7Bz%7D/"
          "%7Bx%7D/%7By%7D.png&amp;zmax=19&amp;zmin=0</datasource>\n"
@@ -304,7 +304,7 @@ void write_qgs_project(const std::string& path, const ProjectSpec& p) {
   o << "  </projectlayers>\n  <layerorder>\n";
   for (size_t i = 0; i < p.layers.size(); ++i)
     o << "    <layer id=\"" << lid(i) << "\"/>\n";
-  if (p.osm_basemap) o << "    <layer id=\"planeloc_osm\"/>\n";
+  if (p.osm_basemap) o << "    <layer id=\"audio2loc_osm\"/>\n";
   char ext[256];
   std::snprintf(
       ext, sizeof ext,

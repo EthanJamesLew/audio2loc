@@ -2,7 +2,7 @@
 # End to end: simulate a scenario with a hidden observer, run the suggested
 # `locate`, and require the answer within MAX_M metres of the truth.
 #
-#   locate_synthetic.sh <planeloc> <work dir> <seed> <max metres>
+#   locate_synthetic.sh <audio2loc> <work dir> <seed> <max metres>
 set -euo pipefail
 BIN=$1 WORK=$2 SEED=$3 MAX_M=$4
 rm -rf "$WORK" && mkdir -p "$WORK" && cd "$WORK"
@@ -20,4 +20,4 @@ awk -v max="$MAX_M" '
     printf "located %.1f m from the hidden observer (limit %g m)\n", d, max
     exit d <= max ? 0 : 1
   }' sim_truth.txt locate.txt
-test -s out/planeloc.qgs && test -s out/result.json
+test -s out/audio2loc.qgs && test -s out/result.json

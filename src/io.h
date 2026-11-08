@@ -29,16 +29,25 @@ RGB colormap(float t);  // t in [0,1], perceptual "inferno"-like ramp
 // Reads a whole file; transparently gunzips if the content is gzip-compressed.
 bool read_file_maybe_gz(const std::string& path, std::string& out);
 
+struct JMember;
+
 struct JVal {
   enum Type : uint8_t { Null, Bool, Num, Str, Arr, Obj } t = Null;
   bool b = false;
   double n = 0;
   std::string s;
   std::vector<JVal> a;
-  std::vector<std::pair<std::string, JVal>> o;
+  // Members in document order. A vector of std::pair<std::string, JVal> would
+  // instantiate the pair while JVal is incomplete, which Clang rejects.
+  std::vector<JMember> o;
   const JVal* get(const char* key) const;
   bool is_num() const { return t == Num; }
 };
+struct JMember {
+  std::string first;
+  JVal second;
+};
+
 bool parse_json(const std::string& text, JVal& out, std::string* err = nullptr);
 std::string json_escape(const std::string& s);
 

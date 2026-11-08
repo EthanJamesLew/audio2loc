@@ -1506,7 +1506,7 @@ int run_locate(const Audio& audio, const std::vector<Flight>& flights,
 
   // QGIS project
   ProjectSpec proj;
-  proj.title = "planeloc result";
+  proj.title = "audio2loc result";
   double span = std::max(0.02, P.refine_radius / 111000.0 * 2.5);
   proj.minlat = B.lat - span;
   proj.maxlat = B.lat + span;
@@ -1579,14 +1579,14 @@ int run_locate(const Audio& audio, const std::vector<Flight>& flights,
     L.visible = false;
     proj.layers.push_back(L);
   }
-  write_qgs_project(P.outdir + "/planeloc.qgs", proj);
-  log("wrote QGIS project %s/planeloc.qgs", P.outdir.c_str());
+  write_qgs_project(P.outdir + "/audio2loc.qgs", proj);
+  log("wrote QGIS project %s/audio2loc.qgs", P.outdir.c_str());
   if (!P.qgis_native_out.empty()) {
     if (write_qgis_native(P.qgis_native_out, P.outdir, proj))
       log("wrote %s via native QGIS API", P.qgis_native_out.c_str());
     else
       log("native QGIS export unavailable in this build (configure with "
-          "-DPLANELOC_WITH_QGIS=ON)");
+          "-DAUDIO2LOC_WITH_QGIS=ON)");
   }
   log("done in %.1fs -> %s/  (peak memory %.2f GB of %.1f GB limit)",
       total.sec(), P.outdir.c_str(), gb(peak_rss_bytes()), gb(P.mem_limit));

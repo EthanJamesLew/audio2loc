@@ -10,7 +10,7 @@
 namespace pl {
 
 struct UpdateOptions {
-  std::string db = "planeloc_db";
+  std::string db = "audio2loc_db";
   std::vector<std::string> dates;  // YYYY-MM-DD (UTC)
   LoadOptions filter;  // bbox / max altitude applied while ingesting
   bool force = false;

@@ -332,7 +332,7 @@ int run_update(const UpdateOptions& o) {
 
 void print_db(const std::string& db) {
   if (!fs::is_directory(db)) {
-    std::printf("database %s: empty (run `planeloc update`)\n", db.c_str());
+    std::printf("database %s: empty (run `audio2loc update`)\n", db.c_str());
     return;
   }
   std::vector<std::string> v;

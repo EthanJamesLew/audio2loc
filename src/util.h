@@ -73,7 +73,7 @@ size_t mem_available_bytes();
 size_t peak_rss_bytes();
 // Absolute path of the running executable.
 std::string self_exe_path();  // high-water mark of the resident set
-// Resolves the memory limit: explicit GB value (>0), else $PLANELOC_MEM_LIMIT
+// Resolves the memory limit: explicit GB value (>0), else $AUDIO2LOC_MEM_LIMIT
 // (GB), else 50% of the memory available right now.
 size_t resolve_mem_limit(double gb);
 // Background thread that terminates the process cleanly (exit code 3, clear

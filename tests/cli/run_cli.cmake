@@ -1,7 +1,7 @@
 # Runs one CLI invocation and checks its exact exit status (WILL_FAIL
 # would accept any nonzero status, including a crash).
 #
-#   cmake -DCLI=<planeloc> -DARGS="a|b|c" -DEXPECT=<code>
+#   cmake -DCLI=<audio2loc> -DARGS="a|b|c" -DEXPECT=<code>
 #         [-DSTDOUT_MATCH=<regex>] [-DSTDERR_MATCH=<regex>]
 #         [-DOUTPUT=<file that must exist afterwards and is removed first>]
 #         [-DOUTPUT_MATCH=<regex the OUTPUT file must contain>]

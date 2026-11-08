@@ -92,7 +92,7 @@ struct SearchParams {
   size_t mem_limit = 0;   // bytes; 0 = 50% of currently available RAM
   double tile_deg = 2.0;  // initial tile size for stages A-C (auto-split under
                           // memory pressure)
-  std::string outdir = "planeloc_out";
+  std::string outdir = "audio2loc_out";
   std::string qgis_native_out;  // if non-empty and built with QGIS: write .qgz
                                 // via QGIS API
 };

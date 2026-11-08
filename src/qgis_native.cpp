@@ -1,12 +1,12 @@
 // Optional native QGIS integration: links libqgis_core and writes a .qgz
 // project through the QGIS C++ API (QgsProject / QgsVectorLayer / renderers).
-// Enabled with -DPLANELOC_WITH_QGIS=ON.
+// Enabled with -DAUDIO2LOC_WITH_QGIS=ON.
 #include "export.h"
 
 #include <cmath>
 #include <cstdio>
 
-#ifdef PLANELOC_WITH_QGIS
+#ifdef AUDIO2LOC_WITH_QGIS
 #include <qgsapplication.h>
 #include <qgscoordinatereferencesystem.h>
 #include <qgscolorramp.h>
@@ -31,7 +31,7 @@
 
 namespace pl {
 
-#ifdef PLANELOC_WITH_QGIS
+#ifdef AUDIO2LOC_WITH_QGIS
 
 bool qgis_native_available() {
   return true;
@@ -46,7 +46,7 @@ static QColor qcolor(const std::string& rgb) {
 bool write_qgis_native(const std::string& path, const std::string& dir,
                        const ProjectSpec& p) {
   static int argc = 1;
-  static char arg0[] = "planeloc";
+  static char arg0[] = "audio2loc";
   static char* argv[] = {arg0, nullptr};
   QgsApplication app(argc, argv, false);
   QgsApplication::initQgis();

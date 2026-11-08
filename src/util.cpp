@@ -27,7 +27,7 @@ int g_threads = 0;
 static const auto g_t0 = std::chrono::steady_clock::now();
 static void stamp() {
   static const bool on = [] {
-    const char* e = std::getenv("PLANELOC_TIMESTAMPS");
+    const char* e = std::getenv("AUDIO2LOC_TIMESTAMPS");
     return e && *e && *e != '0';
   }();
   if (on)
@@ -208,7 +208,7 @@ std::string self_exe_path() {
   uint32_t n = 0;
   _NSGetExecutablePath(nullptr, &n);
   std::string p(n, '\0');
-  if (_NSGetExecutablePath(p.data(), &n) != 0) return "planeloc";
+  if (_NSGetExecutablePath(p.data(), &n) != 0) return "audio2loc";
   p.resize(std::strlen(p.c_str()));
   std::error_code ec;
   auto c = std::filesystem::canonical(p, ec);
@@ -250,7 +250,7 @@ size_t mem_available_bytes() {
 std::string self_exe_path() {
   std::error_code ec;
   auto p = std::filesystem::read_symlink("/proc/self/exe", ec);
-  return ec ? std::string("planeloc") : p.string();
+  return ec ? std::string("audio2loc") : p.string();
 }
 #endif
 
@@ -279,7 +279,7 @@ static size_t cgroup_limit_bytes() {
 
 size_t resolve_mem_limit(double g) {
   if (g <= 0) {
-    const char* e = std::getenv("PLANELOC_MEM_LIMIT");
+    const char* e = std::getenv("AUDIO2LOC_MEM_LIMIT");
     if (e && *e) g = std::atof(e);
   }
   size_t cg = cgroup_limit_bytes();

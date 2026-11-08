@@ -13,7 +13,7 @@ bool enabled() {
   return false;
 }
 std::string info() {
-  return "not compiled (configure with -DPLANELOC_CUDA=ON)";
+  return "not compiled (configure with -DAUDIO2LOC_CUDA=ON)";
 }
 bool stft_db(const float*, size_t, double, int, int, double, double, int, int,
              int, float*) {

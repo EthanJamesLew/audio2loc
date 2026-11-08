@@ -389,7 +389,7 @@ int run_simulate(const SimOptions& o) {
     evargs += b;
   }
   std::snprintf(b, sizeof b,
-                "suggested: planeloc locate --audio %s.wav --adsb %s.csv%s "
+                "suggested: audio2loc locate --audio %s.wav --adsb %s.csv%s "
                 "--start %s --end %s\n",
                 o.prefix.c_str(), o.prefix.c_str(), evargs.c_str(),
                 fmt_time(T0).c_str(), fmt_time(T1).c_str());
@@ -532,7 +532,7 @@ int run_simulate_real(const SimOptions& o, const std::string& adsb) {
     }
     std::string day = fmt_time(std::floor(T1 / 86400) * 86400).substr(0, 10);
     std::snprintf(b, sizeof b,
-                  "suggested: planeloc locate --audio %s.wav --adsb %s%s "
+                  "suggested: audio2loc locate --audio %s.wav --adsb %s%s "
                   "--start %s --end %sT23:59:59Z\n",
                   o.prefix.c_str(), adsb.c_str(), ev.c_str(), day.c_str(),
                   day.c_str());

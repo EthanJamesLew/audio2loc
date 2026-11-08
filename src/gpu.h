@@ -1,6 +1,6 @@
-// Optional CUDA acceleration (build with -DPLANELOC_CUDA=ON). Every entry point
-// returns false when the GPU path is unavailable so callers fall back to the
-// CPU implementation, which stays the reference: GPU kernels mirror the CPU
+// Optional CUDA acceleration (build with -DAUDIO2LOC_CUDA=ON). Every entry
+// point returns false when the GPU path is unavailable so callers fall back to
+// the CPU implementation, which stays the reference: GPU kernels mirror the CPU
 // algorithms step for step.
 #pragma once
 #include <cstdint>

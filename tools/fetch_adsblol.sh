@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Download one day of global historical ADS-B (adsb.lol, ODbL/CC0, readsb trace format) and build a
-# planeloc cache restricted to a region / altitude.
+# audio2loc cache restricted to a region / altitude.
 #
 #   tools/fetch_adsblol.sh 2025-09-08 data/ [W,S,E,N]
 #
@@ -20,6 +20,6 @@ URLS=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/tags/$TAG" |
 echo "$URLS"
 # parts are a split tar: concatenate the streams and extract traces/ on the fly
 ( for u in $URLS; do curl -fL --retry 3 "$u"; done ) | tar -x -C "$OUT" --wildcards 'traces/*' || true
-BIN=${PLANELOC:-$(dirname "$0")/../build/planeloc}
+BIN=${AUDIO2LOC:-$(dirname "$0")/../build/audio2loc}
 "$BIN" ingest --adsb "$OUT/traces" --bbox "$BBOX" --max-alt 7000 -o "$OUT/adsb_${DATE}.plb"
-echo "cache: $OUT/adsb_${DATE}.plb  (pass to: planeloc locate --adsb $OUT/adsb_${DATE}.plb ...)"
+echo "cache: $OUT/adsb_${DATE}.plb  (pass to: audio2loc locate --adsb $OUT/adsb_${DATE}.plb ...)"

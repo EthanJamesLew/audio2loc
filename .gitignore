@@ -19,10 +19,10 @@ _deps/
 *.pid
 bench/
 test_db/
-planeloc_db/
-planeloc_out/
-planeloc_work/
-planeloc_measure/
+audio2loc_db/
+audio2loc_out/
+audio2loc_work/
+audio2loc_measure/
 
 # Editor / IDE
 .DS_Store

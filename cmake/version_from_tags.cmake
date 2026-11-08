@@ -1,6 +1,6 @@
 # The version of a source tree, from its release tags.
 #
-#   planeloc_version_from_tags(<source dir> <fallback> <out build> <out release>)
+#   audio2loc_version_from_tags(<source dir> <fallback> <out build> <out release>)
 #
 # Release tags are MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-PRERELEASE (semver.org),
 # with or without a leading v. <out release> is MAJOR.MINOR.PATCH of the newest tag behind the
@@ -11,7 +11,7 @@
 #   no tag in the history     <fallback>-dev+gabc12345
 #   no git, no archived tag   <fallback>
 # All of them sort after the tag and before the next release.
-function(planeloc_version_from_tags source_dir fallback out_build out_release)
+function(audio2loc_version_from_tags source_dir fallback out_build out_release)
   set(patterns "v[0-9]*.[0-9]*.[0-9]*" "[0-9]*.[0-9]*.[0-9]*")
   set(core "v?([0-9]+)\\.([0-9]+)\\.([0-9]+)(-[0-9A-Za-z.-]+)?")
   set(tag "")

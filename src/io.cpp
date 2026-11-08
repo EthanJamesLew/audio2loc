@@ -185,7 +185,7 @@ struct JP {
         ws();
         if (p >= e || *p != ':') return false;
         ++p;
-        v.o.emplace_back(std::move(k), JVal{});
+        v.o.push_back(JMember{std::move(k), JVal{}});
         if (!val(v.o.back().second, depth + 1)) return false;
         ws();
         if (p < e && *p == ',') {

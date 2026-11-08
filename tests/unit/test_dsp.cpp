@@ -69,7 +69,7 @@ TEST_CASE("decimation keeps a tone below the new Nyquist", "[dsp]") {
 
 TEST_CASE("16-bit WAV round-trips", "[dsp]") {
   const auto path =
-      std::filesystem::temp_directory_path() / "planeloc_test_roundtrip.wav";
+      std::filesystem::temp_directory_path() / "audio2loc_test_roundtrip.wav";
   const Audio a = tone(8000, 1.0, 440.0, 0.25);
   write_wav16(path.string(), a);
   const Audio b = load_audio(path.string(), 8000);

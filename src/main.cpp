@@ -1,4 +1,5 @@
-// planeloc - geolocate a recording from the Doppler curves of aircraft flyovers
+// audio2loc - geolocate a recording from the Doppler curves of aircraft
+// flyovers
 // + ADS-B history.
 #include <algorithm>
 #include <cmath>
@@ -27,9 +28,9 @@
 using namespace pl;
 
 static const char* kUsage =
-    R"(planeloc - locate a recording from aircraft Doppler curves + ADS-B history
+    R"(audio2loc - locate a recording from aircraft Doppler curves + ADS-B history
 
-usage: planeloc <command> [options]     (planeloc --version)
+usage: audio2loc <command> [options]     (audio2loc --version)
 
 commands
   spectrogram  render a spectrogram PNG to find Doppler curves (zoom with --t0/--t1/--fmin/--fmax)
@@ -73,18 +74,18 @@ locate
   --refine-step M --refine-radius M --refine-top N   dense heatmap around winners (25 / 1500 / 1)
   --top N --overlays N  ranked rows / overlay PNGs (25 / 3)
   --max-alt M           ignore ADS-B above this altitude MSL (default 7000)
-  --mem-limit GB        hard memory cap (default: 50% of available RAM; env PLANELOC_MEM_LIMIT). The search
+  --mem-limit GB        hard memory cap (default: 50% of available RAM; env AUDIO2LOC_MEM_LIMIT). The search
                         works tile by tile and splits tiles to stay under it; a watchdog exits cleanly
                         (code 3) rather than letting the machine run out of memory
   --tile-deg D          initial spatial tile size for the candidate stages (default 2)
   --geoid N             geoid undulation (m) for geometric altitudes (CONUS ~ -30)
-  --out DIR             output directory (default planeloc_out)
-  --qgz FILE            also write a .qgz through the native QGIS API (needs -DPLANELOC_WITH_QGIS=ON)
+  --out DIR             output directory (default audio2loc_out)
+  --qgz FILE            also write a .qgz through the native QGIS API (needs -DAUDIO2LOC_WITH_QGIS=ON)
 
 ingest:   --adsb PATH... -o cache.plb [--start --end --bbox --max-alt]
-update:   --db DIR (default $PLANELOC_DB or ./planeloc_db)  --date YYYY-MM-DD (repeatable) | --from D --to D |
+update:   --db DIR (default $AUDIO2LOC_DB or ./audio2loc_db)  --date YYYY-MM-DD (repeatable) | --from D --to D |
           --latest | --list   [--bbox W,S,E,N --max-alt M --force]   (set GITHUB_TOKEN to lift API limits)
-mcp:      --work DIR (default $PLANELOC_WORK or ./planeloc_work)  --db DIR
+mcp:      --work DIR (default $AUDIO2LOC_WORK or ./audio2loc_work)  --db DIR
 simulate: --prefix P --seed N --start ISO --hours H --lat --lon --region DEG --decoys N --props N --jets N
           --noise X --gap S
 )";
@@ -244,7 +245,7 @@ static int cmd_measure(const Args& a) {
   if (specs.empty()) die("measure needs at least one --event");
   auto ev = prepare_events(au, specs, P);
   print_events(ev);
-  std::string out = a.get("out", "planeloc_measure");
+  std::string out = a.get("out", "audio2loc_measure");
   std::filesystem::create_directories(out);
   for (size_t k = 0; k < ev.size(); ++k) {
     const Event& e = ev[k];
@@ -341,7 +342,7 @@ static int cmd_locate(const Args& a) {
   P.mem_limit = resolve_mem_limit(a.num("mem-limit", 0));
   start_mem_watchdog(P.mem_limit);
   log("memory limit %.1f GB (override with --mem-limit GB or "
-      "PLANELOC_MEM_LIMIT)",
+      "AUDIO2LOC_MEM_LIMIT)",
       gb(P.mem_limit));
   P.outdir = a.get("out", P.outdir);
   P.qgis_native_out = a.get("qgz");
@@ -391,7 +392,7 @@ static int cmd_locate(const Args& a) {
               "search area extends outside it",
               p.c_str(), w, s, e, n);
       } else
-        log("db: missing %s (run `planeloc update --db %s --date %s` or pass "
+        log("db: missing %s (run `audio2loc update --db %s --date %s` or pass "
             "--auto-update)",
             p.c_str(), uo.db.c_str(), d.c_str());
     }
@@ -431,7 +432,7 @@ static std::string env_or(const char* k, const char* def) {
 
 static int cmd_update(const Args& a) {
   UpdateOptions o;
-  o.db = a.get("db", env_or("PLANELOC_DB", "planeloc_db"));
+  o.db = a.get("db", env_or("AUDIO2LOC_DB", "audio2loc_db"));
   if (a.has("list")) {
     print_db(o.db);
     return 0;
@@ -467,9 +468,9 @@ static int cmd_update(const Args& a) {
 static int cmd_mcp(const Args& a) {
   g_verbose = 0;  // stdout belongs to the protocol
   std::string self = self_exe_path();
-  return run_mcp_server(self,
-                        a.get("work", env_or("PLANELOC_WORK", "planeloc_work")),
-                        a.get("db", env_or("PLANELOC_DB", "planeloc_db")));
+  return run_mcp_server(
+      self, a.get("work", env_or("AUDIO2LOC_WORK", "audio2loc_work")),
+      a.get("db", env_or("AUDIO2LOC_DB", "audio2loc_db")));
 }
 
 static int cmd_simulate(const Args& a) {
@@ -499,7 +500,7 @@ static int cmd_simulate(const Args& a) {
 int main(int argc, char** argv) {
   if (argc >= 2 && (std::strcmp(argv[1], "--version") == 0 ||
                     std::strcmp(argv[1], "version") == 0)) {
-    std::printf("planeloc %s\n", version_string());
+    std::printf("audio2loc %s\n", version_string());
     return 0;
   }
   Args a = parse_args(argc, argv);
