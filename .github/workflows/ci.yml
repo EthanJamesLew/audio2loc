@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: pipx install clang-format==18.1.8
+      - name: clang-format --dry-run
+        run: |
+          shopt -s globstar nullglob
+          clang-format --dry-run --Werror src/*.{h,cpp,cu} tests/**/*.{h,cpp}
+
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The release binaries are built here: the oldest toolchain we
+          # support, so they run on glibc 2.35 and newer.
+          - { name: ubuntu-22.04 / gcc-12, os: ubuntu-22.04, cxx: g++-12, pkgs: g++-12 }
+          - { name: ubuntu-24.04 / gcc-14, os: ubuntu-24.04, cxx: g++-14, pkgs: g++-14 }
+          - { name: ubuntu-24.04 / clang-18, os: ubuntu-24.04, cxx: clang++-18, pkgs: clang-18 }
+          - { name: ubuntu-24.04-arm / gcc-13, os: ubuntu-24.04-arm, cxx: g++-13, pkgs: g++-13 }
+          - { name: macos-15 / apple-clang, os: macos-15, cxx: clang++ }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the version comes from the tags
+      - name: Toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build zlib1g-dev ${{ matrix.pkgs }}
+      - name: Toolchain (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAUDIO2LOC_WERROR=ON
+          -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+      - run: cmake --build build -j
+      - run: build/audio2loc --version
+      - run: ctest --test-dir build --output-on-failure --parallel
+
+  sanitize:
+    name: ubuntu-24.04 / address+undefined
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build zlib1g-dev
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DAUDIO2LOC_WERROR=ON
+          "-DAUDIO2LOC_SANITIZE=address;undefined"
+      - run: cmake --build build -j
+      # The end-to-end locate takes minutes under the sanitizers; the release
+      # builds run it.
+      - run: ctest --test-dir build --output-on-failure --parallel -LE e2e
+        env:
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+
+  cuda:
+    # Hosted runners have no GPU: this compiles the kernels and checks that a
+    # CUDA build falls back to the CPU and still passes every test.
+    name: CUDA 12.6 (build, CPU fallback)
+    runs-on: ubuntu-24.04
+    container: nvidia/cuda:12.6.3-devel-ubuntu24.04
+    steps:
+      - run: apt-get update && apt-get install -y --no-install-recommends cmake ninja-build g++ git zlib1g-dev ca-certificates
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAUDIO2LOC_WERROR=ON
+          -DAUDIO2LOC_CUDA=ON "-DCMAKE_CUDA_ARCHITECTURES=75-real;86-real;89"
+      - run: cmake --build build -j
+      - run: ctest --test-dir build --output-on-failure --parallel
+
+  docker:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: slim
+          load: true
+          tags: audio2loc:ci
+          build-args: AUDIO2LOC_VERSION=0.0.0-ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test the image
+        run: |
+          set -e
+          test "$(docker run --rm audio2loc:ci --version)" = "audio2loc 0.0.0-ci"
+          # The MCP server answers initialize on stdio.
+          echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}' |
+            docker run --rm -i audio2loc:ci mcp | grep -q '"serverInfo"'
+          # A synthetic scenario end to end, inside the image.
+          docker run --rm --entrypoint bash audio2loc:ci -c '
+            set -e; cd /tmp
+            audio2loc simulate --prefix sim --seed 7 -q
+            audio2loc $(grep ^suggested: sim_truth.txt | cut -d" " -f3-) -q --out out | grep ^BEST:'

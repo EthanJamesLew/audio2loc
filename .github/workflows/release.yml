@@ -1,0 +1,138 @@
+name: Release
+
+# Publishing a release on GitHub builds its tag for Linux (x86-64, arm64) and
+# macOS (arm64), attaches the archives to the release, and pushes the Docker
+# images to ghcr.io. Run by hand, this is a dry run: the archives stay workflow
+# artifacts and no image is pushed. CONTRIBUTING.md has the steps.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - name: The tag is a version
+        id: v
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [ "${{ github.event_name }}" != release ]; then
+            echo "version=0.0.0-dryrun" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [[ ! "$TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Release tag $TAG is not a version such as v0.2.0 or 1.0.0-rc.1"
+            exit 1
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+  binaries:
+    needs: version
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: linux-x86_64, os: ubuntu-22.04, cxx: g++-12, pkgs: g++-12 }
+          - { target: linux-arm64, os: ubuntu-22.04-arm, cxx: g++-12, pkgs: g++-12 }
+          - { target: macos-arm64, os: macos-15, cxx: clang++ }
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the version comes from the tags
+      - name: Toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build zlib1g-dev ${{ matrix.pkgs }}
+      - name: Toolchain (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      # libstdc++ is linked statically so the Linux binary needs only glibc 2.35+
+      # and zlib; macOS 13+ on Apple silicon.
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAUDIO2LOC_WERROR=ON
+          -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+          ${{ runner.os == 'Linux' && '"-DCMAKE_EXE_LINKER_FLAGS=-static-libstdc++ -static-libgcc"' || '-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0' }}
+      - run: cmake --build build -j
+      - name: The binary reports the tag
+        if: github.event_name == 'release'
+        run: test "$(build/audio2loc --version)" = "audio2loc $VERSION"
+      - run: ctest --test-dir build --output-on-failure --parallel
+      - name: Package
+        run: |
+          d=audio2loc-$VERSION-${{ matrix.target }}
+          mkdir -p "$d/bin"
+          cp build/audio2loc "$d/bin/"
+          strip "$d/bin/audio2loc" || true
+          cp -r README.md CONTRIBUTING.md docs "$d/"
+          [ -f LICENSE ] && cp LICENSE "$d/"
+          cp -r tools "$d/"
+          tar czf "$d.tar.gz" "$d"
+          shasum -a 256 "$d.tar.gz" > "$d.tar.gz.sha256"
+      - name: Attach it to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" audio2loc-*.tar.gz audio2loc-*.tar.gz.sha256 --clobber
+      - name: Keep it as an artifact
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: audio2loc-${{ matrix.target }}
+          path: audio2loc-*.tar.gz*
+          retention-days: 7
+
+  docker:
+    needs: version
+    name: docker (${{ matrix.target }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: slim, suffix: '' }
+          - { target: cuda, suffix: '-cuda' }
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: github.event_name == 'release'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Tags
+        id: tags
+        run: |
+          image=ghcr.io/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/audio2loc
+          tags="$image:$VERSION${{ matrix.suffix }}"
+          # A pre-release does not move latest / cuda.
+          if [[ "$VERSION" != *-* ]]; then
+            tags="$tags,$image:${{ matrix.target == 'slim' && 'latest' || 'cuda' }}"
+          fi
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: AUDIO2LOC_VERSION=${{ env.VERSION }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ env.VERSION }}
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
