@@ -22,13 +22,14 @@
 #include "mcp.h"
 #include "update.h"
 #include "util.h"
+#include "version.h"
 
 using namespace pl;
 
 static const char* kUsage =
     R"(planeloc - locate a recording from aircraft Doppler curves + ADS-B history
 
-usage: planeloc <command> [options]
+usage: planeloc <command> [options]     (planeloc --version)
 
 commands
   spectrogram  render a spectrogram PNG to find Doppler curves (zoom with --t0/--t1/--fmin/--fmax)
@@ -465,7 +466,7 @@ static int cmd_update(const Args& a) {
 
 static int cmd_mcp(const Args& a) {
   g_verbose = 0;  // stdout belongs to the protocol
-  std::string self = std::filesystem::read_symlink("/proc/self/exe").string();
+  std::string self = self_exe_path();
   return run_mcp_server(self,
                         a.get("work", env_or("PLANELOC_WORK", "planeloc_work")),
                         a.get("db", env_or("PLANELOC_DB", "planeloc_db")));
@@ -496,6 +497,11 @@ static int cmd_simulate(const Args& a) {
 }
 
 int main(int argc, char** argv) {
+  if (argc >= 2 && (std::strcmp(argv[1], "--version") == 0 ||
+                    std::strcmp(argv[1], "version") == 0)) {
+    std::printf("planeloc %s\n", version_string());
+    return 0;
+  }
   Args a = parse_args(argc, argv);
   if (a.has("v")) g_verbose = 2;
   if (a.has("q")) g_verbose = 0;

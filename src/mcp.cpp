@@ -4,6 +4,7 @@
 // down; images (spectrograms, model overlays) are returned as MCP image content
 // so a multimodal model can find and box Doppler curves itself.
 #include "mcp.h"
+#include "version.h"
 
 #include <unistd.h>
 
@@ -390,9 +391,9 @@ int run_mcp_server(const std::string& self, const std::string& work,
       send("{\"jsonrpc\":\"2.0\",\"id\":" + rid +
            ",\"result\":{\"protocolVersion\":" + q(pv) +
            ",\"capabilities\":{\"tools\":{\"listChanged\":false}},"
-           "\"serverInfo\":{\"name\":\"planeloc\",\"version\":"
-           "\"0.2.0\"},\"instructions\":" +
-           q(kInstructions) + "}}");
+           "\"serverInfo\":{\"name\":\"planeloc\",\"version\":" +
+           q(version_string()) + "},\"instructions\":" + q(kInstructions) +
+           "}}");
     } else if (meth == "ping") {
       send("{\"jsonrpc\":\"2.0\",\"id\":" + rid + ",\"result\":{}}");
     } else if (meth == "tools/list") {

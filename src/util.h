@@ -67,10 +67,12 @@ std::string lower(std::string s);
 bool parse_double(const std::string& s, double& out);
 bool file_exists(const std::string& p);
 
-// Memory accounting (Linux /proc). Bytes.
+// Memory accounting (Linux /proc, macOS Mach). Bytes.
 size_t current_rss_bytes();
 size_t mem_available_bytes();
-size_t peak_rss_bytes();  // high-water mark of the resident set
+size_t peak_rss_bytes();
+// Absolute path of the running executable.
+std::string self_exe_path();  // high-water mark of the resident set
 // Resolves the memory limit: explicit GB value (>0), else $PLANELOC_MEM_LIMIT
 // (GB), else 50% of the memory available right now.
 size_t resolve_mem_limit(double gb);

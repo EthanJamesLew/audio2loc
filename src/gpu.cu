@@ -303,18 +303,6 @@ __device__ bool cpa_serial(const DTracks& T, uint32_t tr, D3 o, double t_lo,
   return true;
 }
 
-// straight_lng
-__device__ double straight_lng(double t_r, double v, double d, double tc,
-                               double c) {
-  double t0 = tc - d / c, T = t_r - t0;
-  double c2 = c * c, a = c2 - v * v;
-  double disc = c2 * v * v * T * T + a * d * d;
-  double tau = (c2 * T - sqrt(disc)) / a;
-  double x = v * tau, r = sqrt(x * x + d * d);
-  double vr = -v * x / r;
-  return -log1p(-vr / c);
-}
-
 // ======================================================= stage A kernels ===
 struct Samp {
   double lat, lon, h, mlat, mlon;
@@ -1074,7 +1062,6 @@ __global__ void __launch_bounds__(kBlock, 3)
   extern __shared__ double sh_d[];
   float* rows = reinterpret_cast<float*>(sh_d);
   float* uni = rows + maxRows;
-  float* sc = uni;
   float* tre = uni;
   float* lge = uni + neCap;
   float* st = uni + max(2 * neCap, kCombo);
@@ -1296,10 +1283,10 @@ bool init(bool want, int dev) {
     return false;
   size_t fr = 0, tot = 0;
   cudaMemGetInfo(&fr, &tot);
-  char b[256];
-  std::snprintf(b, sizeof b, "%s (sm_%d%d, %.1f GB, %.1f GB free)", pr.name,
-                pr.major, pr.minor, gb(tot), gb(fr));
-  g_info = b;
+  char b[64];
+  std::snprintf(b, sizeof b, " (sm_%d%d, %.1f GB, %.1f GB free)", pr.major,
+                pr.minor, gb(tot), gb(fr));
+  g_info = std::string(pr.name) + b;
   g_enabled = true;
   return true;
 }

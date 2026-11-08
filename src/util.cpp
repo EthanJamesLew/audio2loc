@@ -1,13 +1,22 @@
 #include "util.h"
 
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#include <mach/mach.h>
+#include <sys/sysctl.h>
+#endif
+
+#include <filesystem>
 #include <fstream>
 
 #include <cctype>
 #include <cstdarg>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 
 namespace pl {
@@ -167,6 +176,45 @@ std::string lower(std::string s) {
   return s;
 }
 
+#if defined(__APPLE__)
+size_t current_rss_bytes() {
+  mach_task_basic_info info{};
+  mach_msg_type_number_t n = MACH_TASK_BASIC_INFO_COUNT;
+  if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
+                reinterpret_cast<task_info_t>(&info), &n) != KERN_SUCCESS)
+    return 0;
+  return info.resident_size;
+}
+
+size_t peak_rss_bytes() {
+  rusage u{};
+  getrusage(RUSAGE_SELF, &u);
+  return static_cast<size_t>(u.ru_maxrss);  // bytes on macOS
+}
+
+// macOS has no MemAvailable; free plus inactive pages is the usual stand-in.
+size_t mem_available_bytes() {
+  vm_statistics64_data_t vm{};
+  mach_msg_type_number_t n = HOST_VM_INFO64_COUNT;
+  if (host_statistics64(mach_host_self(), HOST_VM_INFO64,
+                        reinterpret_cast<host_info64_t>(&vm),
+                        &n) != KERN_SUCCESS)
+    return size_t{8} << 30;
+  return (static_cast<size_t>(vm.free_count) + vm.inactive_count) *
+         static_cast<size_t>(sysconf(_SC_PAGESIZE));
+}
+
+std::string self_exe_path() {
+  uint32_t n = 0;
+  _NSGetExecutablePath(nullptr, &n);
+  std::string p(n, '\0');
+  if (_NSGetExecutablePath(p.data(), &n) != 0) return "planeloc";
+  p.resize(std::strlen(p.c_str()));
+  std::error_code ec;
+  auto c = std::filesystem::canonical(p, ec);
+  return ec ? p : c.string();
+}
+#else
 size_t current_rss_bytes() {
   long pages = 0, rss = 0;
   FILE* f = std::fopen("/proc/self/statm", "r");
@@ -198,6 +246,13 @@ size_t mem_available_bytes() {
     if (k == "MemAvailable:") return v * 1024;
   return (size_t)8 << 30;
 }
+
+std::string self_exe_path() {
+  std::error_code ec;
+  auto p = std::filesystem::read_symlink("/proc/self/exe", ec);
+  return ec ? std::string("planeloc") : p.string();
+}
+#endif
 
 // Tightest cgroup-v2 memory.max on the path of this process (containers,
 // systemd scopes), or 0.
