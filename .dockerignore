@@ -1,0 +1,12 @@
+.git
+build/
+build-*/
+bench/
+test_db/
+planeloc_db/
+planeloc_out/
+planeloc_work/
+*.plb
+*.wav
+*.mp4
+*.log

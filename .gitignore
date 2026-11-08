@@ -1,0 +1,35 @@
+# Builds
+build/
+build-*/
+cmake-build-*/
+out/
+.cache/
+compile_commands.json
+CMakeUserPresets.json
+_deps/
+
+# Data and results: ADS-B caches, recordings, benchmarks, run outputs
+*.plb
+*.plb.meta
+*.wav
+*.mp4
+*.nsys-rep
+*.sqlite
+*.log
+*.pid
+bench/
+test_db/
+planeloc_db/
+planeloc_out/
+planeloc_work/
+planeloc_measure/
+
+# Editor / IDE
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+.claude/
+__pycache__/
+dist/
